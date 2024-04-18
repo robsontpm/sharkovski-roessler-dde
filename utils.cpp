@@ -2,7 +2,7 @@
 ///
 ///  @file utils.cpp
 ///  
-///  @author ag  @date   Mar 5, 2020
+///  @author agrs  @date   Apr 18, 2024
 //////////////////////////////////////////////////////////////////////////////
 
 // Standard libraries and the CAPD library
@@ -149,19 +149,6 @@ bool system3d::inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiece
 		Set3d = DDESolution(grid, grid(0), expand(*i));
 		Set3d.set_Cr0(expandedGridSetCoordinateSystem, expandedGridSetBox);
 
-		// cout << "AAA test" << endl;
-		// DDESolution trajectory(grid, grid(0), expand(*i));
-		// cout << (IVector)trajectory.getValueAtCurrent() << endl;
-
-		// Eq sssrhs(interval(5.7), interval(0.2));
-		// DDEq sssvf(sssrhs);
-		// DDESolver sss(sssvf, order);
-		// for (int z = 0; z < 10; ++z) {
-		// 	cout << z << " " << flush;
-		// 	trajectory.move(sss);
-		// 	cout << (IVector)trajectory.getValueAtCurrent() << endl;
-		// }
-		// cout << "AAA test END" << endl;
 
 		cout << "IVector " << IVector(Set3d) << endl;
 		auto PSet3d = P(Set3d, rt);

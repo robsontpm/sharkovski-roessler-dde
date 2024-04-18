@@ -1,13 +1,12 @@
 /* ========================================================================
- * From the Sharkovskii theorem to periodic orbits for the Roessler system
- * Anna Gierzkiewicz and Piotr Zgliczyński
+ * Roessler DDE system
+ * Anna Gierzkiewicz and Robert Szczelina
  * ========================================================================
  * Program: Roessler_Sharkovskii.cpp
- * Date: 22 VI 2021
+ * Date: 18 IV 2024
  * ========================================================================
  * The program contains the proofs of existence of contracting grids
- * in the Roessler system with four values of parameter a = 4.7, 
- * declared in Section 6.
+ * in the Roessler system ...
  * ========================================================================*/ 
 
 #include <iostream>
