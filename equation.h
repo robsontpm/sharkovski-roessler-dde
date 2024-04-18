@@ -31,11 +31,11 @@ public:
 	typedef capd::vectalg::Vector<ParamType, 0> ParamsVectorType;
 
 	/** default constructor for default values of parameters, its good to have one. */
-	Rossler(): a(ParamType(57) / ParamType(10)), b(ParamType(2) / ParamType(10)) {}
+	Rossler(): a(ParamType(57) / ParamType(10)), b(ParamType(2) / ParamType(10)), eps(0) {}
 	/** construct eq for given parameter values */
-	Rossler(ParamType a, ParamType b): a(a), b(b) {}
+	Rossler(ParamType a, ParamType b, ParamType eps): a(a), b(b), eps(eps) {}
 	/** construct eq taking parameters from a vector. It must be of this form for RigorousHelper to work! */
-	Rossler(ParamsVectorType const& params): a(params[0]), b(params[1]) {}
+	Rossler(ParamsVectorType const& params): a(params[0]), b(params[1]), eps(params[2]) {}
 
 	/** output dimension of the map f in DDE (1), R\"ossler is 3D  */
 	static size_type imageDimension() { return 3; }
@@ -43,9 +43,9 @@ public:
 	 * input dimension of the map f in DDE (1), should be (1+m) * imageDimension() for m delays,
 	 * since we do ODE (2), we set m = 0
 	 * */
-	static size_type dimension() { return 3; }
+	static size_type dimension() { return 6; }
 	/** required by the RigorousHelper */
-	static size_type getParamsCount() { return 2; }
+	static size_type getParamsCount() { return 3; }
 
 	/**
 	 * computation of RHS of the equation x'(t) = f(x(t), x(t-tau), ...),
@@ -66,14 +66,15 @@ public:
 	 */
 	template<typename RealSpec, typename InVectorSpec, typename OutVectorSpec>
 	void operator()(const RealSpec& t, const InVectorSpec x, OutVectorSpec& fx) const {
-		fx[0] = -(x[1]+x[2]);
-		fx[1] = x[0]+b*x[1];
-		fx[2] = b+x[2]*(x[0]-a);
+		fx[0] = -(x[1]+x[2]) - eps*(x[4]+x[5]);
+		fx[1] = x[0]+b*x[1] + eps*(x[3]+b*x[4]);
+		fx[2] = b+x[2]*(x[0]-a) + eps*(b+x[5]*(x[3]-a));
 	}
 
 protected:
 	ParamType a;
 	ParamType b;
+	ParamType eps;
 };
 
 #endif

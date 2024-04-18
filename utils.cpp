@@ -133,7 +133,6 @@ bool system3d::inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiece
   
 	//C0Rect2Set Set3d(expand(hset1.center()));
 
-	DDESolution Set3d(grid, grid(0), expand(hset1.center()));
 	IVector Pset2d(2);  
 	interval rt(0.);
 	IMatrix expandedGridSetCoordinateSystem = expand(gridSet.coordinateSystem());			// expanded to 3d, where P is defined
@@ -143,17 +142,23 @@ bool system3d::inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiece
 	
 	bool liesInside = 1;
 	P.setRequiredSteps(0);
+		auto zero = grid(0);
+		auto tau = grid(p);
 	for(auto i = gridSet.begin();i!=gridSet.end();++i)
 	{
 		// Set3d = C0Rect2Set(expand(*i),expandedGridSetCoordinateSystem,expandedGridSetBox);
-		Set3d = DDESolution(grid, grid(0), expand(*i));
-		Set3d.set_Cr0(expandedGridSetCoordinateSystem, expandedGridSetBox);
+		//Set3d = DDESolution(grid, -tau, zero, 3, expand(*i));				// (grid, from, to, order, constant function value)
+		DDESolution segment(grid, -tau, zero, 3, AmbientSet(expand(*i),expandedGridSetCoordinateSystem,expandedGridSetBox));				// (grid, from, to, order, constant function value)
+		//Set3d = DDESolution(grid, grid(0), expand(*i));
+		//Set3d.getValueAtCurrent().set_Cr0(expandedGridSetCoordinateSystem, expandedGridSetBox);
 
 
-		cout << "IVector " << IVector(Set3d) << endl;
-		auto PSet3d = P(Set3d, rt);
+		cout << "IVector " << IVector(segment.getValueAtCurrent()) << endl;
+		auto Psegment = P(segment, rt);
 		// PSet3d.affineTransform(expandedHSet2InvCoordinateSystem, expandedHSet2Center);
 
+
+		AmbientSet PSet3d = Psegment.getValueAtCurrent();
 		IVector PV = 
 			expandedHSet2InvCoordinateSystem * (PSet3d.get_x() - expandedHSet2Center) + 
 			(expandedHSet2InvCoordinateSystem * PSet3d.get_C()) * PSet3d.get_r0() +  

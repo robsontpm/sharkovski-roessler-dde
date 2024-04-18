@@ -38,15 +38,15 @@ int main()
 		cout << "===========================================================" << endl;
 		cout << "|| Roessler system, a = 5.25" << endl;
 		cout << "===========================================================" << endl;
-
-		cout << "Is the grid G3 forward-invariant? ... " << roessler525.inside(grid3,grid3,500,3) << endl;		// check if P(grid) < grid divided into 500x3 pieces
-		cout << "----------------------------------------" << endl;				//~ {		
+	
 		cout << "P(C1)<C2? ... " << roessler525.inside(c3[0],c3[1],3,1) << endl;		// true
 		cout << "----------------------------------------" <<  endl;
 		cout << "P(C2)<C3? ... " << roessler525.inside(c3[1],c3[2],20,1) << endl;		// true
 		cout << "----------------------------------------" << endl;
-		cout << "P(C3)<C1? ... " << roessler525.inside(c3[2],c3[0],5,1) << endl;		// true
+		cout << "P(C3)<C1? ... " << roessler525.inside(c3[2],c3[0],40,1) << endl;		// true
 		cout << "----------------------------------------" <<  endl;
+		cout << "Is the grid G3 forward-invariant? ... " << roessler525.inside(grid3,grid3,1000,3) << endl;		// check if P(grid) < grid divided into 500x3 pieces
+		cout << "----------------------------------------" << endl;				//~ {	
 	}
 	catch(exception& e)
   	{

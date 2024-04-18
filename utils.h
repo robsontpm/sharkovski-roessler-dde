@@ -42,6 +42,7 @@ typedef capd::ddeshelper::RigorousHelper<Eq, 1, IMatrix, IVector> Setup;
 typedef Setup::Grid Grid;					// grid for the solutions in the C^n_p space.
 typedef Setup::DDEq DDEq;					// this is F from the abstract formulation x'(t) = F(x_t), that contains the information on delays. In our case F(x_t) := f(x_t(0), x_t(-tau)).
 typedef Setup::Solution DDESolution;		// basic set type for DDEs
+typedef Setup::SetType AmbientSet;		    // ??? TODO: docs
 typedef Setup::Solver DDESolver;			// semidynamical system
 typedef Setup::PoincareMap DDEPoincareMap;	// Poincare map for the semidynamical system
 typedef Setup::Section DDESection;			// basic section for DDEs
@@ -103,14 +104,14 @@ int iteration;
 system3d(const interval &aa = interval(5.7)) :									// constructor, default parameter a=5.7
 	p(64), tau(1.0), h(tau/p), grid(h),
 	order(3),
-	rhs(aa, interval(0.2)),														// f(a, b)
-	vf(rhs), 																	// f(x_t)
+	rhs(aa, interval(0.2),0.00001),														// f(a, b,eps)
+	vf(rhs, grid(p)), 															// f(x_t), grid(p) = p*h = tau
 	section(3, 0),																// x=0 section
-	solver(vf,order),
+	solver(vf, order * 3),														//max order = order*3	
 	P(solver, section, poincare::MinusPlus),
 	P2d(P, grid)
 	{
-		P.setRequiredSteps(0);	
+		P.setRequiredSteps(order * p);	
 		P.setMaxSteps(1000);	
 	}
 
