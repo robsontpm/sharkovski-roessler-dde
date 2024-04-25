@@ -191,11 +191,12 @@ void system3d::makeHistory(const HSet2D& hset){
 	ITimeMap backmap(backsolver);
 	C0Rect2Set set3D(expand(hset.center()), expand(hset.coordinateSystem()), expand(hset.box()));
 	ofstream points("history.txt");
-	std::vector<> history;
-	for (int i = 0; i < p; ++i){
+	std::vector<C0Rect2Set> history;
+	for (int i = 0; i <= p; ++i){
 //		odesolver.setStep(-h);
 //		odesolver.turnOffStepControl();
 		backmap(h * i, set3D);
+		history.push_back(set3D);
 		IVector hull = set3D, mid, r0;
 		split(hull, mid, r0);
 
@@ -215,4 +216,52 @@ void system3d::makeHistory(const HSet2D& hset){
 	gp.close();
 
 	{ auto dump = system("gnuplot plot.gp"); }
+
+	// let's try now to integrate last set forward in time and check how it
+	// is compared to other sets on the backward trajectory.
+
+	IMap forwardvf("par:a,b; var:x,y,z; fun: -y - z, x + b*y, b + z*(x - a);");
+	forwardvf.setParameter("a",a);
+	forwardvf.setParameter("b",bb);
+	IOdeSolver forwardsolver(forwardvf, 40);
+	ITimeMap forwardmap(forwardsolver);
+	IMatrix Cinv = capd::matrixAlgorithms::inverseMatrix(set3D.get_C());
+	IVector error_correction({0, 0, 0});
+	// error_correction = (Cinv * set3D.get_B()) * set3D.get_r();
+	C0Rect2Set testSet(set3D.get_x(), set3D.get_C(), set3D.get_r0() + error_correction); // to reset time
+	for (int i = 1; i < p; ++i){
+
+		forwardmap(h * i, testSet);
+		auto histSet = history[p-i]; // we need to compare set with this one.
+		IMatrix M = histSet.get_C();
+		IMatrix Minv = capd::matrixAlgorithms::inverseMatrix(histSet.get_C());
+
+		IVector hullInC = testSet.affineTransformation(Minv, histSet.get_x());
+		cout << "forward " << i << endl;
+		cout << histSet.get_r0() << endl;
+		cout << hullInC << endl << endl;
+	}
+
+	// z historii wartości wylicz (p,n)-reprezentację. Na razie liczymy dla n = 0, 1, i 2
+
+	// Df(v) = {
+	// 0          -1        -1
+	// 1           b        0
+	// v[2]        0        v[0]
+	// }
+	//
+	// niech będzie:
+	//   v \in v0 + C * r_0   (to znamy z historii, tzn v(-h*i) =(jako zbiór)= history[i], i \in 0, ..., p;
+	// to
+	//   v' \in f(v0 + C * r_0) \approx f(v0) + (Df(v0 + C*r_0) * C) * r_0 \approx (usuwamy przedział wewnatrz DF)
+	//                                f(v0) + (Df(v0) * C) * r_0 =: v0' + C' * r_0
+	// teraz v'' spełnia
+	//   v'' = Df(v) \circ Dv = Df(v) \cdot v' \approx Df(v) \cdot (v0' + C' * r_0) \approx
+	//         Df(v0) v0'   +   (Df(v0) C') r_0   =:   v0'' + C'' r_0
+	//
+	// więc v^[2] = 1/2 (powyżej)
+	// i tak można to pociągnąc rekurencyjnie wyżej, jakbysmy chcieli.
+
+
+
 }
