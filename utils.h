@@ -91,6 +91,7 @@ struct system3d
 {
 int p;
 interval tau, h;
+interval a;
 Grid grid;
 int order;
 Eq rhs;
@@ -102,20 +103,22 @@ SecMap P2d;
 int iteration;
 
 system3d(const interval &aa = interval(5.7)) :									// constructor, default parameter a=5.7
-	p(64), tau(1.0), h(tau/p), grid(h),
+	p(64), tau(1.0), h(tau/p), grid(h), a(aa),
 	order(3),
 	rhs(aa, interval(0.2),0.00001),														// f(a, b,eps)
 	vf(rhs, grid(p)), 															// f(x_t), grid(p) = p*h = tau
 	section(3, 0),																// x=0 section
 	solver(vf, order * 3),														//max order = order*3	
 	P(solver, section, poincare::MinusPlus),
-	P2d(P, grid)
+	P2d(P, grid),
+	iteration(1)
 	{
 		P.setRequiredSteps(order * p);	
 		P.setMaxSteps(1000);	
 	}
 
 bool inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
+void makeHistory(const HSet2D &hset);
 };
 
 

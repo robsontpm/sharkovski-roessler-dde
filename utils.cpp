@@ -179,3 +179,40 @@ bool system3d::inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiece
 	}
     return liesInside;
 }
+
+void system3d::makeHistory(const HSet2D& hset){
+	IMap backvf("par:a,b; var:x,y,z; fun: y + z, -x - b*y, -b - z*(x - a);");
+	interval bb = interval(0.2);
+	backvf.setParameter("a",a);
+	backvf.setParameter("b",bb);
+	IOdeSolver backsolver(backvf, 40);
+	//odesolver.turnOffStepControl();
+	//odesolver.setStep(-h);
+	ITimeMap backmap(backsolver);
+	C0Rect2Set set3D(expand(hset.center()), expand(hset.coordinateSystem()), expand(hset.box()));
+	ofstream points("history.txt");
+	std::vector<> history;
+	for (int i = 0; i < p; ++i){
+//		odesolver.setStep(-h);
+//		odesolver.turnOffStepControl();
+		backmap(h * i, set3D);
+		IVector hull = set3D, mid, r0;
+		split(hull, mid, r0);
+
+		cout << hull << endl;
+		points << mid[0].leftBound() << " " << mid[1].leftBound() << " " << mid[2].leftBound() << " ";
+		points << r0[0].rightBound() << " " << r0[1].rightBound() << " " << r0[2].rightBound() << endl;
+	}
+	points.close();
+	ofstream gp("plot.gp");
+	gp << "set terminal png size 800,600" << endl;
+	gp << "set output 'xy.png'" << endl;
+	gp << "plot 'history.txt' using 1:2:4:5 with boxxyerrorbars" << endl;
+	gp << "set output 'xz.png'" << endl;
+	gp << "plot 'history.txt' using 1:3:4:6 with boxxyerrorbars" << endl;
+	gp << "set output 'yz.png'" << endl;
+	gp << "plot 'history.txt' using 2:3:5:6 with boxxyerrorbars" << endl;
+	gp.close();
+
+	{ auto dump = system("gnuplot plot.gp"); }
+}
