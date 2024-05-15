@@ -36,6 +36,16 @@ int main()
 		c3[2] = HSet2D(IVector ({-9.74889, 0.0307529}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.036,0.00072}));			// cube 3
 		
 		roessler525.makeHistory(c3[0]);
+
+		const int CUTS_Y = 1000;
+		const int CUTS_Z = 3;
+		GridSet gridSet(2);
+		grid3.gridSet(gridSet,CUTS_Y,CUTS_Z);
+		for(auto i = gridSet.begin();i!=gridSet.end();++i)
+		{
+			Set3d = C0Rect2Set(expand(*i), );
+			roessler525.makeHistoryD(grid3, CUTS_Y, CUTS_Z);
+		}
 		return 0;
 
 		cout << "===========================================================" << endl;
@@ -48,7 +58,7 @@ int main()
 		cout << "----------------------------------------" << endl;
 		cout << "P(C3)<C1? ... " << roessler525.inside(c3[2],c3[0],40,1) << endl;		// true
 		cout << "----------------------------------------" <<  endl;
-		cout << "Is the grid G3 forward-invariant? ... " << roessler525.inside(grid3,grid3,1000,3) << endl;		// check if P(grid) < grid divided into 500x3 pieces
+		cout << "Is the grid G3 forward-invariant? ... " << roessler525.inside(grid3,grid3,CUTS_Y,CUTS_Z) << endl;		// check if P(grid) < grid divided into 500x3 pieces
 		cout << "----------------------------------------" << endl;				//~ {	
 	}
 	catch(exception& e)

@@ -119,6 +119,7 @@ system3d(const interval &aa = interval(5.7)) :									// constructor, default p
 
 bool inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
 void makeHistory(const HSet2D &hset);
+void makeHistoryD(const HSet2D &hset, int cuts_y, int cuts_z);
 };
 
 
