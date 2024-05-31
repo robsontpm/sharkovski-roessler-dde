@@ -125,6 +125,83 @@ IVector SecMap::image(const IVector &x, const int iter) const
 //////////////////////////////////////////////////////////////////////////////
 
 // checks if the image of hset1 lies inside hset2
+bool system3d::estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iy, int iz)
+{
+	// TODO: spraw, aby brał pod uwagę hset1 i hset2 !!!! WAZNE!
+	// TODO: 1. wczytaj opis seta ogolnego
+	IMatrix C(M(), M());
+	IMatrix invC(M(), M());
+	IVector x0(M());
+	IVector r0(M());
+	capd::ddeshelper::readBinary("grid3_x0.ivector.bin", x0);
+	capd::ddeshelper::readBinary("grid3_C.imatrix.bin", C);
+	capd::ddeshelper::readBinary("grid3_r0.ivector.bin", r0);
+	capd::ddeshelper::readBinary("grid3_invC.imatrix.bin", invC);
+	// we assume x0 is generated from the mid point of hset2...
+	// if not, we need to adjust... TODO: dorobić...
+
+	IVector chunk_box = r0;
+
+	double ry = hset2.get_r()[0];
+	double rz = hset2.get_r()[1];
+	IVector corner = x0 - interval(ry) * C.column(1) - interval(rz) * C.column(2);
+	auto dy = ry / howManyPiecesH;
+	auto dz = rz / howManyPiecesV;
+
+	r0[1] = interval(-ry, ry);
+	r0[2] = interval(-rz, rz);
+	chunk_box[1] = interval(-dy, dy);
+	chunk_box[2] = interval(-dz, dz);
+
+	interval rt(0.);
+
+	// compute images
+	IVector new_r0 = r0;
+	IVector new_Xi(p * d);
+
+	auto chunk_x0 = corner + C.column(1) * interval(dy + dy * 2 * iy) + C.column(1) * interval(dz + dz * 2 * iz);
+	auto segment = makeISegment(chunk_x0);
+	segment.set_Cr0(C, chunk_box);
+	auto Psegment = P(segment, rt);
+	IVector Phull = invC * (Psegment.get_x() - x0) +
+				(invC * Psegment.get_C()) * Psegment.get_r0() +
+				(invC * Psegment.get_B()) * Psegment.get_r();
+
+	IVector resthull{0.,0.,0.};
+	for (int j = d; j < Phull.dimension(); j+=3){
+		IVector u {Phull[j+0], Phull[j+1], Phull[j+2]};
+		resthull = capd::vectalg::intervalHull(resthull, u);
+	}
+	std::ostringstream oss;
+	oss << boolalpha;
+	oss << iy << " " << iz;
+	for (int j = 1; j < d; j++){
+		 oss << " " << Phull[j].subset(r0[j]); // << " " << resthull[j];
+	}
+	cout << oss.str() << endl;
+
+	new_Xi = Psegment.get_Xi();;
+	new_r0 = capd::vectalg::intervalHull(new_r0, Phull);
+	new_r0[0] = 0.;
+
+	string dirpath = "estimate_piece/";
+	capd::ddeshelper::mkdir_p(dirpath);
+
+	ostringstream prefix;
+	prefix << "_" << iy << "_" << iz;
+
+	std::ofstream human_readable_new_r0(dirpath + "human_readable_new_radius" + prefix.str() + ".txt");
+	human_readable_new_r0 << "r0:" << endl << new_r0 << endl;
+	human_readable_new_r0 << "Xi:" << endl << new_Xi << endl;
+	human_readable_new_r0.close();
+
+	capd::ddeshelper::saveBinary(dirpath + "grid3_new_r0" + prefix.str() + ".ivector.bin", new_r0);
+	capd::ddeshelper::saveBinary(dirpath + "grid3_new_Xi0" + prefix.str() + ".ivector.bin", new_Xi);
+
+	return false;
+}
+
+// checks if the image of hset1 lies inside hset2
 bool system3d::refine_box(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iteration)
 {
 	// TODO: spraw, aby brał pod uwagę hset1 i hset2 !!!! WAZNE!
@@ -162,8 +239,10 @@ bool system3d::refine_box(const HSet2D &hset1, const HSet2D &hset2, int howManyP
 	IVector new_r0 = r0;
 	IVector new_Xi(p * d);
 	int count = 0;
-	for (int iy = 0; iy < howManyPiecesH; ++iy){
-		for (int iz = 0; iz < howManyPiecesV; ++iz){
+//	for (int iy = 0; iy < howManyPiecesH; ++iy){
+//		for (int iz = 0; iz < howManyPiecesV; ++iz){
+	for (int iy = howManyPiecesH-1; iy >= 0; --iy){
+		for (int iz = howManyPiecesV-1; iz >= 0; --iz){
 			auto chunk_x0 = corner + C.column(1) * interval(dy + dy * 2 * iy) + C.column(1) * interval(dz + dz * 2 * iz);
 			auto segment = makeISegment(chunk_x0);
 			segment.set_Cr0(C, chunk_box);
@@ -174,9 +253,16 @@ bool system3d::refine_box(const HSet2D &hset1, const HSet2D &hset2, int howManyP
 						(invC * Psegment.get_C()) * Psegment.get_r0() +
 						(invC * Psegment.get_B()) * Psegment.get_r();
 
-			for (int j = 1; j < Phull.dimension(); j++){
-				cout << "    " << Phull[j] << " vs " << r0[j] << " ? " << Phull[j].subset(r0[j]) << endl;
+			IVector resthull{0.,0.,0.};
+			for (int j = d; j < Phull.dimension(); j+=3){
+				IVector u {Phull[j+0], Phull[j+1], Phull[j+2]};
+				resthull = capd::vectalg::intervalHull(resthull, u);
 			}
+			for (int j = 1; j < d; j++){
+				cout << "    main:   " << Phull[j] << " vs " << r0[j] << " ? " << Phull[j].subset(r0[j]) << endl;
+				cout << "    others: " << resthull[j] << endl;
+			}
+
 			IVector Xi = Psegment.get_Xi();
 //			cout << Xi << endl;
 //			cout << Xi.dimension() << " " << new_Xi.dimension() << endl;

@@ -31,6 +31,12 @@ void splotMany(system3d& roessler525, std::vector<DVector>& x0_all, std::string 
 void computeCoordsByC1(system3d&, HSet2D&, int, int);
 /** TODO: docs */
 void computeCoordsSimple(system3d&, HSet2D&, int, int);
+///** TODO: docs */
+//void computeCoordsForward(system3d&, DVector const& ivp);
+void computeCoordsForward(
+		system3d& system, DVector const& ivp,
+		HSet2D& hset, int CUTS_Y, int CUTS_Z,
+		std::vector<DVector> fin_mid_others = {});
 
 // Main function
 
@@ -40,35 +46,31 @@ int main()
 	cout << boolalpha;  
 	try
 	{			
-		system3d roessler525(interval(5.25));						// The Roessler system with a=5.25 defined 					
+		interval a = 5.25;
+		interval epsi = interval(0.0);
+		//interval epsi = interval(0.0001);
+		interval tau = 0.5;
+		system3d roessler525(tau, epsi, a);
 		///===================== variables used in Procedure 1:  =====================
-		HSet2D grid3 (IVector ({-6.38401, 0.0327544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({3.63687,0.0004}));			// Attractor's container		
+		HSet2D grid3 (IVector ({-6.38401, 0.0327544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({3.63687,0.0004}));			// Attractor's container
 		vector<HSet2D> c3(3);
 		c3[0] = HSet2D(IVector ({-3.46642, 0.0346316}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.072,0.00048}));			// cube 1
 		c3[1] = HSet2D(IVector ({-6.26401, 0.0326544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.162,0.00066}));			// cube 2
 		c3[2] = HSet2D(IVector ({-9.74889, 0.0307529}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.036,0.00072}));			// cube 3
 		
-		//const int CUTS_Y = 1000;
-		//const int CUTS_Y = 100;
-		const int CUTS_Y = 6; // TODO: for now smaller to faster test
+////		const int CUTS_Y = 1000;
+//		const int CUTS_Y = 100;
+////		const int CUTS_Y = 6; // TODO: for now smaller to faster test
+//		const int CUTS_Z = 3;
+//		computeCoordsSimple(roessler525, grid3, CUTS_Y, CUTS_Z);
+
+		const int CUTS_Y = 100;
 		const int CUTS_Z = 3;
-		//computeCoordsByC1(roessler525, grid3, CUTS_Y, CUTS_Z);
-		computeCoordsSimple(roessler525, grid3, CUTS_Y, CUTS_Z);
+
+		DVector ivp {0.,-5,0.03};
+		computeCoordsForward(roessler525, ivp, grid3, CUTS_Y, CUTS_Z);
 
 		return 0;
-
-		cout << "===========================================================" << endl;
-		cout << "|| Roessler system, a = 5.25" << endl;
-		cout << "===========================================================" << endl;
-	
-		cout << "P(C1)<C2? ... " << roessler525.inside(c3[0],c3[1],3,1) << endl;		// true
-		cout << "----------------------------------------" <<  endl;
-		cout << "P(C2)<C3? ... " << roessler525.inside(c3[1],c3[2],20,1) << endl;		// true
-		cout << "----------------------------------------" << endl;
-		cout << "P(C3)<C1? ... " << roessler525.inside(c3[2],c3[0],40,1) << endl;		// true
-		cout << "----------------------------------------" <<  endl;
-		cout << "Is the grid G3 forward-invariant? ... " << roessler525.inside(grid3,grid3,CUTS_Y,CUTS_Z) << endl;		// check if P(grid) < grid divided into 500x3 pieces
-		cout << "----------------------------------------" << endl;				//~ {	
 	}
 	catch(exception& e)
   	{
@@ -100,19 +102,21 @@ void splotMany(system3d& roessler525, std::vector<DVector>& x0_all, std::string 
 	const std::string plotpath = "./plots/" + name + "/";
 	capd::ddeshelper::mkdir_p(plotpath);
 	std::vector<std::string> gplots;
+	std::cerr << "Plotting " << x0_all.size() << " segments... " << std::flush;
 	for (int i = 0; i < x0_all.size(); ++i){
 		DVector& v = x0_all[i];
 		auto seg = roessler525.makeDSegment(v);
 		std::ostringstream filename; filename << "seg-" << i;
 		std::string fileprefix = plotpath + filename.str();
 		// cout << v << endl;
-		cout << "plotting " << i << " " << fileprefix << endl;
+		// cout << "plotting " << i << " " << fileprefix << endl;
 		// capd::ddeshelper::plot_value(fileprefix.str(), seg, false);
 		capd::ddeshelper::plot_value(fileprefix, seg.pastTime(), seg.currentTime(), roessler525.h.leftBound() / 10, seg, false);
 		std::ostringstream plot;
 		plot << "'" << filename.str() << "ddes-plot.dat' u 3:5:7 with lines notitle";
 		gplots.push_back(plot.str());
 	}
+	std::cerr << "DONE" << std::endl;
 
 	capd::ddeshelper::splot_many(plotpath, gplots, false, "all");
 	// force plot, as xplot is precompiled without the flag...
@@ -427,5 +431,258 @@ void computeCoordsSimple(system3d& roessler525, HSet2D& grid3, int CUTS_Y, int C
 //
 //
 //	DMatrix infinite_coords;
+}
+
+void computeCoordsForward(
+		system3d& system, DVector const& ivp,
+		HSet2D& hset, int CUTS_Y, int CUTS_Z,
+		std::vector<DVector> fin_mid_others){
+
+	int& p = system.p;
+	int& order = system.order;
+	// const int& d = system.d;
+	int d = 3; // .... argh....
+	DGrid &grid = system.dgrid;
+
+	DEq rhs(system.a.leftBound(), 0.2, 0.);	// eps = 0.
+	DDDEq vf(rhs, grid(p));
+	DSection section(3, 0, 0.);
+	DSolver solver(vf, order * 3);
+	DPoincare P(solver, section, poincare::MinusPlus);
+
+	DSolution constIVP(grid, -grid(p), grid(0), order, ivp);
+	DSolution Px(grid, -grid(p), grid(0), order, ivp);
+	DSolution solution = constIVP;
+
+	std::vector<DVector> attractor;
+	double tp;
+	int NUM_ITERS = 100;
+	for (int i = 0; i < NUM_ITERS; ++i){
+		P(solution, Px, tp);
+		DVector pv = Px;
+		pv[0] = 0.0;
+		attractor.push_back(pv);
+	}
+	splotMany(system, attractor, "forward-history");
+
+	std::string plotpath = "plots/";
+	std::string filename = "forward-history";
+	capd::ddeshelper::plot_value(plotpath + filename, solution.pastTime(), solution.currentTime(), system.h.leftBound() / 10, solution, false);
+	std::ostringstream plot;
+	plot << "'" << filename << "ddes-plot.dat' u 3:5:7 with lines notitle";
+	capd::ddeshelper::splot_many(plotpath, { plot.str() }, false, "trajectory");
+	std::ostringstream cmd; cmd << "cd '" << plotpath << "' && gnuplot 'trajectory.gp'";
+	capd::ddeshelper::runSystemCommand(cmd.str());
+
+	DVector zerov(system.M());
+	auto mean = [zerov](std::vector<DVector> items){
+		auto vv = std::accumulate(items.begin(), items.end(), zerov);
+		vv /= double(items.size());
+		return vv;
+	};
+
+	DMatrix fin_C = hset.get_B();
+	DVector fin_mid_main = expand(hset.get_x());
+
+	DVector fin_ydir = expand(fin_C.column(0)); // fin_C is 2 dim...
+	DVector fin_zdir = expand(fin_C.column(1));
+	cout << fin_ydir << endl;
+	cout << fin_zdir << endl;
+
+
+	std::sort(attractor.begin(), attractor.end(), [](DVector const& a, DVector const& b){
+		return a[1] < b[1];
+	});
+
+	// this seems like bad idea to compute average direction
+	// istead, i just connect two farthest points and this seems ok-ish
+	cout << "Computing ydir" << endl;
+	DVector ydir = attractor.front() - attractor.back();
+	double norm = ydir[1]; ydir /= norm;
+	ydir = -ydir; // żeby bylo jak u ani
+
+	// mean vector seems ok-ish
+	cout << "Computing mid point" << endl;
+	std::vector<DVector> mid_candidates;
+	for (int i = 0; i < attractor.size() / 3; ++i)
+		for (int j = attractor.size() -1; j >= 2 * attractor.size() / 3; --j)
+			mid_candidates.push_back(mean({attractor[i], attractor[j]}));
+
+	capd::vectalg::SumNorm<DVector, DMatrix> selnorm;
+	std::sort(mid_candidates.begin(), mid_candidates.end(), [&fin_mid_main, &selnorm](DVector const& a, DVector const& b){
+		DVector aa{a[1], a[2]};
+		DVector bb{b[1], b[2]};
+		DVector cc{fin_mid_main[1], fin_mid_main[2]};
+
+		return selnorm(aa-cc) < selnorm(bb-cc);
+	});
+	DVector mid_point = mid_candidates[0];
+
+	auto translate = [&](DVector const& fin_v, DVector const& full_v){
+		DSolution const_fin_v(grid, -grid(p), grid(0), order, fin_v);
+		DSolution const_proj_v(grid, -grid(p), grid(0), order, {full_v[0], full_v[1], full_v[2]});
+		return full_v - DVector(const_proj_v) + DVector(const_fin_v);
+	};
+
+	auto compheads = [&](DVector const& fin_v, DVector const& full_v){
+		DVector proj_v {full_v[0], full_v[1], full_v[2]};
+		cout << "old: " << fin_v << endl;
+		cout << "new: " << proj_v << endl;
+		cout << "dif: " << proj_v - fin_v << endl;
+	};
+
+	cout << "midpoint:" << endl; compheads(fin_mid_main, mid_point);
+	cout << "ydir:    " << endl; compheads(fin_ydir, ydir);
+
+	// I DO a small correction to the coordinates (they are very close the new ones and the old ones)
+
+	// this seems like bad idea:
+	// (it moves past points away from their position too much)
+//	ydir = translate(fin_ydir, ydir);
+//	mid_point = translate(fin_mid_main, mid_point);
+
+	cout << "translated midpoint:" << endl; compheads(fin_mid_main, mid_point);
+	cout << "translated ydir:    " << endl; compheads(fin_ydir, ydir);
+
+	DVector zdir(system.M());
+	// zdir[0] = fin_zdir[0]; // this should be 0
+	zdir[1] = fin_zdir[1];
+	zdir[2] = fin_zdir[2];
+
+	// const solutions is not great, as it does not scale in the range over z
+	// and it does not contain the derivatives
+//	// TODO: rethink if keep using this
+//	DSolution const_fin_zdir(grid, -grid(p), grid(0), order, fin_zdir);
+//	zdir = DVector(const_fin_zdir);
+
+	// an idea: put zdir * e^lambda * -t, for tin range[-tau, 0] as
+	// the vector. The lambda should be choosen to scale well with the attractor thickness
+
+	// we need to do better...
+//	double LAMBDA = 3; // ?? TODO: choose
+//	auto h = system.h.leftBound();
+//	for (int i = 0; i < p; ++i){
+//		double elambdat = exp(LAMBDA * i * h);
+//		cout << elambdat << endl;
+//		for (int k = 0; k <= order; ++k){
+//			if (i == 0 && k > 0) continue;
+//			int bi = (i == 0 ? 0 : d * (1 + (i-1) * (order+1) + k)); // baseindex
+//			DVector v = fin_zdir * elambdat;
+//			for (int j = 0; j < d; ++j)
+//				zdir[bi + j] = v[j];
+//			elambdat *= -LAMBDA / (k+1); // (e^LAMBDA*-t)^(k) / k! (dla k+1)
+//		}
+//	}
+	// just leave it 2 dim and check if the deviation is big or not....
+
+	cout << "Saving coordinates" << endl;
+	// save coordinates to be used later
+	IVector I_x0(mid_point);
+	IMatrix I_C(system.M(), system.M());
+	I_C.setToIdentity();
+	I_C.column(1) = IVector(ydir);
+	I_C.column(2) = IVector(zdir);
+	IVector I_r0(system.M()); I_r0 *= 0.;
+
+	std::ofstream human_readable_coords("human_readable_coords.txt");
+	human_readable_coords << "x0: " << endl;
+	human_readable_coords << mid_point << endl;
+	human_readable_coords << "C: " << endl;
+	human_readable_coords << capd::vectalg::midObject<DMatrix>(I_C) << endl;
+	human_readable_coords << "r0: " << endl;
+	human_readable_coords << I_r0 << endl;
+
+	capd::ddeshelper::saveBinary("grid3_x0.ivector.bin", I_x0);
+	capd::ddeshelper::saveBinary("grid3_C.imatrix.bin", I_C);
+	capd::ddeshelper::saveBinary("grid3_r0.ivector.bin", I_r0);
+	std::cout << "Please run from 'bin' folder: " << endl;
+	std::cout << "../../../../bin/convmatrix ";
+	std::cout << system.M() << " bin grid3_C.imatrix.bin ";
+	std::cout << "inv bin " << "grid3_invC.imatrix.bin" << endl;
+
+	GridSet gridSet(2);
+	hset.gridSet(gridSet, CUTS_Y, CUTS_Z);
+	IVector box = expand(gridSet.box());
+	std::vector<DVector> the_set_chunks;
+	DMatrix gridInvCoords = capd::vectalg::midObject<DMatrix>(hset.get_I_invB());
+	for(auto chunk = gridSet.begin(); chunk != gridSet.end(); ++chunk)
+	{
+		DVector mid_chunk = capd::vectalg::midObject<DVector>(*chunk);
+		DVector diff = gridInvCoords*(mid_chunk - hset.get_x());
+		//DVector diff = 0.5 * gridInvCoords*(mid_chunk - hset.get_x()); // TODO: why i need 0.5 to get the right picture??? - rethink!
+		//cout << diff << endl;
+		DVector v = mid_point + diff[0] * ydir + diff[1] * zdir;
+		//DVector v = mid_point + diff[0] * ydir;
+		the_set_chunks.push_back(v);
+	}
+	splotMany(system, the_set_chunks, "the_set_chunks_forward");
+
+	// for each time point draw (a 3d?) picture of all the points on the
+	// generated set and all the points of the attractor
+	// we expect that points of the attractor should more or less lie inside the
+	// set points
+	{
+		auto point3d = [&](DVector const& item, int i, int k){
+			int bi = (i == 0 ? 0 : d * (1 + (i-1) * (order+1) + k)); // baseindex
+			DVector v { item[bi], item[bi+1], item[bi+2] };
+			return v;
+		};
+		auto savedat = [&](std::string const& path, std::vector<DVector> const& items, int i, int k){
+			ofstream datpoints(path);
+			for (auto const& item: items){
+				auto p3d = point3d(item, i, k);
+				for (int j = 0; j < d; ++j)
+					datpoints << p3d[j] << " ";
+				datpoints << "\n";
+			}
+			datpoints.close();
+		};
+
+		std::string plotpath = "plots/scatter/";
+		capd::ddeshelper::mkdir_p(plotpath);
+		for (int k = 0; k <= order; ++k){
+			for (int i = 0; i < p; ++i){
+				if (i == 0 && k > 0) continue;
+
+				std::ostringstream idprefix;
+				idprefix << "-k" << k << "-t" << i;
+
+				savedat(plotpath + "attractor" + idprefix.str() + ".dat", attractor, i, k);
+				savedat(plotpath + "gridset" + idprefix.str() + ".dat", the_set_chunks, i, k);
+
+				ostringstream splot_attractor;
+				splot_attractor << "'attractor" << idprefix.str() << ".dat" << "' with points pt 7 ps 2 lc rgb 'red'";
+				ostringstream splot_gridset;
+				splot_gridset << "'gridset" << idprefix.str() << ".dat" << "' with points pt 7 ps 1 lc rgb 'black'";
+
+
+				capd::ddeshelper::splot_many(
+					plotpath + "live" + idprefix.str(),
+					{
+						splot_attractor.str(),
+						splot_gridset.str(),
+					},
+					true, ""
+				);
+				capd::ddeshelper::splot_many(
+					plotpath + "all" + idprefix.str(),
+					{
+						splot_attractor.str(),
+						splot_gridset.str(),
+					},
+					false, ""
+				);
+				// force plot, as xplot is precompiled without the flag...
+				std::ostringstream cmd; cmd << "cd '" << plotpath << "' && gnuplot 'all" << idprefix.str() << ".gp" << "'";
+				capd::ddeshelper::runSystemCommand(cmd.str());
+			}
+		}
+
+
+//		ofstream gp(plotpath + gpprefix.str() + ".gp");
+//		gp <<
+
+
+	}
 }
 

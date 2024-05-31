@@ -1,7 +1,10 @@
 # my own
 bin/
+bin-*/
 .obj/
 __deprecated__
+log_prep.txt
+log_proof.txt
 
 # eclipse project
 .cproject

@@ -129,18 +129,21 @@ typedef capd::covrel::GridSet<IMatrix> GridSet;
  * This is the definition of f from x'(t) = f(x(t), x(t-tau)).
  */
 typedef Rossler<interval> Eq;
+typedef Rossler<double> DEq;
 
 /** this contains all necessary ingredients to do rigorous numerics in DDEs */
-typedef capd::ddeshelper::NonrigorousHelper<Eq, 1, DMatrix, DVector> Numerics;
+typedef capd::ddeshelper::NonrigorousHelper<DEq, 1, DMatrix, DVector> Numerics;
 
 /** this contains all necessary ingredients to do rigorous numerics in DDEs */
 typedef capd::ddeshelper::RigorousHelper<Eq, 1, IMatrix, IVector> Setup;
 
 // below just renaming
 typedef Numerics::Grid DGrid;				// grid for basic curve
+typedef Numerics::DDEq DDDEq;
 typedef Numerics::Solution DSolution;		// basic description for a curve
+typedef Numerics::Solver DSolver;			// semidynamical system
 typedef Numerics::JetSection DSection;
-typedef Numerics::PoincareMap DPoincareMap;
+typedef Numerics::PoincareMap DPoincare;
 
 // below are just renaming for shorter class names
 typedef Setup::Grid Grid;					// grid for the solutions in the C^n_p space.
@@ -215,8 +218,12 @@ int iteration;
 
 typedef HighOrderHistory HistoryType;
 
-system3d(const interval &eps = interval(0.00001), const interval &aa = interval(5.7)):	// constructor, default parameter a=5.7
-	p(64), tau(0.5), h(tau/p), grid(h), dgrid(h.leftBound()), a(aa),
+system3d(
+		const interval &tau = interval(1.0),
+		const interval &eps = interval(0.00001),
+		const interval &aa = interval(5.7)
+):	// constructor, default parameter a=5.7
+	p(64), tau(tau), h(tau/p), grid(h), dgrid(h.leftBound()), a(aa),
 	order(3),
 	rhs(aa, interval(0.2), eps),												// f(a, b,eps)
 	vf(rhs, grid(p)), 															// f(x_t), grid(p) = p*h = tau
@@ -239,6 +246,7 @@ system3d(const interval &eps = interval(0.00001), const interval &aa = interval(
 bool refine_box(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
 bool inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
 bool inside_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int pieceH, int pieceV);
+bool estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iy, int iz);
 void makeHistory(const HSet2D &hset);
 HistoryType makeHistoryD(const DVector& v0, const DMatrix& C, DVector& out_x0, std::vector<DVector>& out_coords);
 void makeHistoryC0(const DVector& v0, DVector& out_x0);

@@ -1,0 +1,50 @@
+This is very very messy setup now. I will clean up it later.
+
+For now, the protocol to generate data is as follows:
+
+1. Check if every .cpp file has the same tau parameters. 
+   Files to generate initial set should have eps = 0, otherwise, 
+   it should have the same eps of your choice (not so big). 
+2. Remove all files in ./bin, or move them to TRASH (in your subolder)
+3. Recompile the project
+4. Run ./Roessler_DDE_gencoords from inside ./bin
+5. Modify GEN_JOBS.py to have the same CUT_Z, CUT_Y parameters as 
+   you want them to be in your proof.
+   From main folder run:
+    
+    python3 GEN_JOBS.py > JOBLIST.txt
+
+6. Copy JOBLIST.txt to PREPLIST.txt,
+   in PREPLIST.txt change
+        Roessler_DDE_proof_piece
+   to
+        Roessler_DDE_prepPiece
+
+7. Change NUM_JOBS in RUN_PREP.sh to your computer specs.
+    Run 
+
+        time bash RUN_PREP.sh | tee -a log_prep.txt
+
+    after the program finishes, check log_prep.txt if it  does not contain any false. If not, it's good.
+
+8. Run (this should be fast)
+    
+     bash MAKE_RUN_HULL.sh
+
+   Then
+
+      bash RUN_HULL.sh
+
+9. Change NUM_JOBS in RUN_PROOF.sh to your computer specs.
+    Run 
+
+        time bash RUN_PROOF.sh | tee -a log_proof.txt
+
+    after the program finishes, check log_proof.txt if it  does not contain any false. If not, it's good.
+    The Theorem is proven.
+
+    NOTE: you can comment some of the parts (esp. first one - its looong) to get results faster
+    when testing.
+
+10. The images are in bin/plots (TODO:):
+    - TODO:

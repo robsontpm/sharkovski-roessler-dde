@@ -1,5 +1,5 @@
 
-CUT_Y = 100
+CUT_Y = 1000
 CUT_Z = 3
 
 for iy in range(CUT_Y):

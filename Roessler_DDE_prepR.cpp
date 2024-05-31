@@ -28,11 +28,14 @@ int main()
 	cout << boolalpha;  
 	try
 	{			
+		interval a = 5.25;
 		interval epsi = interval(0.0);
 		//interval epsi = interval(0.0001);
-		system3d roessler525(epsi, interval(5.25));	// The Roessler system with a=5.25 defined
+		interval tau = 0.5;
+		system3d roessler525(tau, epsi, a);
 		///===================== variables used in Procedure 1:  =====================
-		HSet2D grid3 (IVector ({-6.38401, 0.0327544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({3.63687,0.0004}));			// Attractor's container		
+		HSet2D grid3 (IVector ({-6.38401, 0.0327544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({3.63687,0.0004}));			// Attractor's container
+//		HSet2D grid3 (IVector ({-6.38401, 0.0327544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({4.0,0.0004}));				// Attractor's container
 		vector<HSet2D> c3(3);
 		c3[0] = HSet2D(IVector ({-3.46642, 0.0346316}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.072,0.00048}));			// cube 1
 		c3[1] = HSet2D(IVector ({-6.26401, 0.0326544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.162,0.00066}));			// cube 2
@@ -48,7 +51,7 @@ int main()
 //		cout << "----------------------------------------" << endl;
 //		cout << "P(C3)<C1? ... " << roessler525.inside(c3[2], c3[0], 40, 1) << endl;
 		cout << "----------------------------------------" <<  endl;
-		cout << "Is the grid G3 forward-invariant? ... " << roessler525.refine_box(grid3, grid3, 100, 3) << endl;
+		cout << "Is the grid G3 forward-invariant? ... " << roessler525.refine_box(grid3, grid3, 1000, 3) << endl;
 		cout << "----------------------------------------" << endl;
 	}
 	catch(exception& e)

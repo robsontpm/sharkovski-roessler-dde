@@ -41,9 +41,12 @@ int main(int argc, char* argv[])
 	cout << boolalpha;  
 	try
 	{			
-		//interval epsi = interval(0.0);
-		interval epsi = interval(0.00001);
-		system3d roessler525(epsi, interval(5.25));	// The Roessler system with a=5.25 defined
+		interval a = 5.25;
+		interval epsi = interval(0.0);
+		epsi = interval(0.0001);
+		//epsi = interval(0.005);
+		interval tau = 0.5;
+		system3d roessler525(tau, epsi, a);
 		///===================== variables used in Procedure 1:  =====================
 		HSet2D grid3 (IVector ({-6.38401, 0.0327544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({3.63687,0.0004}));			// Attractor's container		
 		vector<HSet2D> c3(3);
@@ -51,9 +54,10 @@ int main(int argc, char* argv[])
 		c3[1] = HSet2D(IVector ({-6.26401, 0.0326544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.162,0.00066}));			// cube 2
 		c3[2] = HSet2D(IVector ({-9.74889, 0.0307529}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.036,0.00072}));			// cube 3
 
-		cout << iy << "/" << CUT_Y << " " << iz << "/" << CUT_Z << ": " << std::flush;
 		bool result = roessler525.inside_piece(grid3, grid3, CUT_Y, CUT_Z, iy, iz);
-		cout << result << endl;
+		ostringstream oss; oss << boolalpha;
+		oss << iy << "/" << CUT_Y << " " << iz << "/" << CUT_Z << ": " << result;
+		cout << oss.str() << endl;
 	}
 	catch(exception& e)
   	{

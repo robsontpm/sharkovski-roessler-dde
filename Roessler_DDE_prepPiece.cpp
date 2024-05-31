@@ -22,8 +22,20 @@ using namespace capd::matrixAlgorithms;
 #include "utils.h"
 
 // Main function
-int main()
+int main(int argc, char* argv[])
 {
+	capd::ddeshelper::ArgumentParser parser(argc, argv);
+	int iy = 0, iz = 0;
+	int CUT_Y = 1, CUT_Z = 1;
+	parser.parse("cuty=", CUT_Y, "how many pieces in y");
+	parser.parse("cutz=", CUT_Z, "how many pieces in z");
+	parser.parse("iy=", iy, "piece number in y coordinate");
+	parser.parse("iz=", iz, "piece number in z coordinate");
+	if (parser.isHelpRequested()){
+		std::cout << parser.getHelp() << endl;
+		return 0;
+	}
+
   	cout.precision(16);
 	cout << boolalpha;  
 	try
@@ -31,32 +43,17 @@ int main()
 		interval a = 5.25;
 		interval epsi = interval(0.0);
 		//interval epsi = interval(0.0001);
-		interval tau = 1.;
+		interval tau = 0.5;
 		system3d roessler525(tau, epsi, a);
 		///===================== variables used in Procedure 1:  =====================
-		HSet2D grid3 (IVector ({-6.38401, 0.0327544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({3.63687,0.0004}));			// Attractor's container		
+		HSet2D grid3 (IVector ({-6.38401, 0.0327544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({3.63687,0.0004}));			// Attractor's container
+//		HSet2D grid3 (IVector ({-6.38401, 0.0327544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({4.0,0.0004}));				// Attractor's container
 		vector<HSet2D> c3(3);
 		c3[0] = HSet2D(IVector ({-3.46642, 0.0346316}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.072,0.00048}));			// cube 1
 		c3[1] = HSet2D(IVector ({-6.26401, 0.0326544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.162,0.00066}));			// cube 2
 		c3[2] = HSet2D(IVector ({-9.74889, 0.0307529}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.036,0.00072}));			// cube 3
 
-		cout << "===========================================================" << endl;
-		cout << "|| Roessler system, a = 5.25" << endl;
-		cout << "===========================================================" << endl;
-	
-//		cout << "P(C1)<C2? ... " << roessler525.inside(c3[0],c3[1], 3, 1) << endl;
-//		cout << "----------------------------------------" <<  endl;
-//		cout << "P(C2)<C3? ... " << roessler525.inside(c3[1],c3[2], 20, 1) << endl;
-//		cout << "----------------------------------------" << endl;
-//		cout << "P(C3)<C1? ... " << roessler525.inside(c3[2], c3[0], 40, 1) << endl;
-		cout << "----------------------------------------" <<  endl;
-		//cout << "Is the grid G3 forward-invariant? ... " << roessler525.inside(grid3, grid3, 100, 3) << endl;
-		int CUT_Y = 100;
-		int CUT_Z = 3;
-		for (int iy = 0; iy < CUT_Y; ++iy)
-			for (int iz = 0; iz < CUT_Z; ++iz)
-				cout << "Is the grid G3 forward-invariant? ... " << iy << " " << iz << ": " << roessler525.inside_piece(grid3, grid3, CUT_Y, CUT_Z, iy, iz) << endl;
-		cout << "----------------------------------------" << endl;
+		roessler525.estimate_piece(grid3, grid3, CUT_Y, CUT_Z, iy, iz);
 	}
 	catch(exception& e)
   	{
