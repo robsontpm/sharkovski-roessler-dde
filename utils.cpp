@@ -409,19 +409,22 @@ bool system3d::inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiece
 
 // checks if the (piece of) image of hset1 lies inside hset2
 bool system3d::inside_piece(
-		const HSet2D &hset1, const HSet2D &hset2,
+		const HSet2D &hset1, IVector const& mid1,
+		const HSet2D &hset2, IVector const& mid2,
 		int howManyPiecesH, int howManyPiecesV,
-		int pieceH, int pieceV)
+		int pieceH, int pieceV,
+		IVector &outPhull, IVector &outPXi)
 {
 
 	// TODO: spraw, aby brał pod uwagę hset1 i hset2 !!!! WAZNE!
 
 	IMatrix C(M(), M());
 	IMatrix invC(M(), M());
-	IVector x0(M());
+	//IVector x0(M());
 	IVector r0(M());
 	IVector Xi0(d * p);
-	capd::ddeshelper::readBinary("grid3_x0.ivector.bin", x0);
+	//capd::ddeshelper::readBinary("grid3_x0.ivector.bin", x0);
+	//x0 = mid1;
 	capd::ddeshelper::readBinary("grid3_C.imatrix.bin", C);
 	capd::ddeshelper::readBinary("grid3_new_r0.ivector.bin", r0);
 	capd::ddeshelper::readBinary("grid3_new_Xi.ivector.bin", Xi0);
@@ -431,16 +434,23 @@ bool system3d::inside_piece(
 
 	IVector chunk_box = r0;
 
-	double ry = hset2.get_r()[0];
-	double rz = hset2.get_r()[1];
-	IVector corner = x0 - interval(ry) * C.column(1) - interval(rz) * C.column(2);
-	auto dy = ry / howManyPiecesH;
-	auto dz = rz / howManyPiecesV;
+	double ry1 = hset1.get_r()[0];
+	double rz1 = hset1.get_r()[1];
+	IVector corner = /*x0*/ mid1 - interval(ry1) * C.column(1) - interval(rz1) * C.column(2);
+	auto dy = ry1 / howManyPiecesH;
+	auto dz = rz1 / howManyPiecesV;
 
-	r0[1] = interval(-ry, ry);
-	r0[2] = interval(-rz, rz);
+	IVector hset1_r0 = r0, hset2_r0 = r0;
+
+	hset1_r0[1] = interval(-ry1, ry1);
+	hset1_r0[2] = interval(-rz1, rz1);
 	chunk_box[1] = interval(-dy, dy);
 	chunk_box[2] = interval(-dz, dz);
+
+	double ry2 = hset2.get_r()[0];
+	double rz2 = hset2.get_r()[1];
+	hset2_r0[1] = interval(-ry2, ry2);
+	hset2_r0[2] = interval(-rz2, rz2);
 
 	auto& iy = pieceH;
 	auto& iz = pieceV;
@@ -452,15 +462,15 @@ bool system3d::inside_piece(
 	segment.set_Cr0(C, chunk_box);
 	segment.set_Xi(Xi0);
 	auto Psegment = P(segment, rt);
-	// cout << "Piece: " << iy << " " << iz << " return time: " << rt << endl;
-	IVector Phull = invC * (Psegment.get_x() - x0) +
+	cerr << "Piece: " << iy << " " << iz << " return time: " << rt << endl;
+	IVector Phull = invC * (Psegment.get_x() - mid2) +   // here we use the other mid point (we check condition in hset2)
 				(invC * Psegment.get_C()) * Psegment.get_r0() +
 				(invC * Psegment.get_B()) * Psegment.get_r();
 
 	for (int j = 1; j < Phull.dimension(); j++){
-		bool testj = Phull[j].subset(r0[j]);
+		bool testj = Phull[j].subset(hset2_r0[j]);
 		liesInside = liesInside && testj;
-		if (!testj) cerr << "    BAD r at " << iy << " " << iz << " " << j << ": " << Phull[j] << " vs " << r0[j] << " ? " << testj << endl;
+		if (!testj) cerr << "    BAD r at " << iy << " " << iz << " " << j << ": " << Phull[j] << " vs " << hset2_r0[j] << " ? " << testj << endl;
 	}
 	IVector PXi = Psegment.get_Xi();
 	for (int j = 0; j < PXi.dimension(); j++){
@@ -469,6 +479,8 @@ bool system3d::inside_piece(
 		if (!testXi) cerr << "    BAD Xi at " << iy << " " << iz << " " << j << ": " << PXi[j] << " vs " << Xi0[j] << " ? " << testXi << endl;
 	}
 
+	outPhull = Phull;
+	outPXi = PXi;
 	return liesInside;
 }
 

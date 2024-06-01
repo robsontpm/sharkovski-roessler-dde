@@ -245,7 +245,7 @@ system3d(
 
 bool refine_box(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
 bool inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
-bool inside_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int pieceH, int pieceV);
+bool inside_piece(const HSet2D &hset1, IVector const& mid1, const HSet2D &hset2, IVector const& mid2, int howManyPiecesH, int howManyPiecesV, int pieceH, int pieceV, IVector &outPimage, IVector &outPXi);
 bool estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iy, int iz);
 void makeHistory(const HSet2D &hset);
 HistoryType makeHistoryD(const DVector& v0, const DMatrix& C, DVector& out_x0, std::vector<DVector>& out_coords);

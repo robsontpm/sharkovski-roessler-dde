@@ -58,17 +58,78 @@ int main()
 		c3[1] = HSet2D(IVector ({-6.26401, 0.0326544}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.162,0.00066}));			// cube 2
 		c3[2] = HSet2D(IVector ({-9.74889, 0.0307529}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.036,0.00072}));			// cube 3
 		
-////		const int CUTS_Y = 1000;
-//		const int CUTS_Y = 100;
-////		const int CUTS_Y = 6; // TODO: for now smaller to faster test
-//		const int CUTS_Z = 3;
-//		computeCoordsSimple(roessler525, grid3, CUTS_Y, CUTS_Z);
 
 		const int CUTS_Y = 100;
 		const int CUTS_Z = 3;
 
 		DVector ivp {0.,-5,0.03};
-		computeCoordsForward(roessler525, ivp, grid3, CUTS_Y, CUTS_Z);
+		// TODO: UNCOMMENT FOR LATER
+		//computeCoordsForward(roessler525, ivp, grid3, CUTS_Y, CUTS_Z);
+
+		// compute translation of the mid points of the sets c[i]:
+		IVector I_x0(roessler525.M());
+		IMatrix I_C(roessler525.M(), roessler525.M());
+		capd::ddeshelper::readBinary("grid3_x0.ivector.bin", I_x0);
+		capd::ddeshelper::readBinary("grid3_C.imatrix.bin", I_C);
+
+		auto ydir = I_C.column(1);
+		auto zdir = I_C.column(2);
+
+
+		HSet2D gridAI (IVector ({I_x0[1], I_x0[2]}) , IMatrix ({{I_C[1][1], I_C[1][2]}, {I_C[2][1], I_C[2][2]}}) , DVector({3.63687,0.0004}));			// Attractor's container
+
+		// save data to do pretty pictures
+		IVector box = grid3.box();
+		ostringstream prefix;
+		prefix << "BOX_grid3";
+		string dirpath = "plots/";
+		capd::ddeshelper::mkdir_p(dirpath);
+		ofstream dat(dirpath + prefix.str() + ".dat");
+		dat.precision(16);
+		dat << capd::ddeshelper::to_dat(box[0]) << " ";
+		dat << capd::ddeshelper::to_dat(box[1]) << " ";
+		dat << capd::ddeshelper::to_dat(interval(-1, 1)) << " ";
+		dat << capd::ddeshelper::to_dat(interval(-1, 1)) << " ";
+		dat.close();
+
+		auto& refgrid = gridAI;
+		//auto& refgrid = grid3;
+
+		cout << refgrid.get_I_B() << endl << refgrid.get_I_invB() << endl;
+		auto ref = refgrid.get_I_x();
+		auto invC = refgrid.get_I_invB();
+		for (int i = 0; i < 3; i++){
+			auto c3_mid = c3[i].get_I_x();
+			auto diff = invC * (c3_mid - ref);
+			cout << "c3[" << i << "].mid in coordinates: " << diff << endl;
+			auto new_c3 = capd::vectalg::midObject<DVector>(I_x0 + ydir * diff[0] + zdir * diff[1]);
+			cout << "head: " << new_c3[0] << " " ;
+			new_c3[0] = 0.; // x = 0 on section
+			IVector v2d {new_c3[1], new_c3[2]};
+			cout << v2d << endl;
+			cout << "diff:" << v2d - c3_mid << endl;
+
+			std::ostringstream filename;
+			filename << "c3_" << i << "_x0.ivector.bin";
+			capd::ddeshelper::saveBinary(filename.str(), IVector(new_c3));
+
+
+			// save data to do pretty pictures
+			IVector box = diff + c3[i].box();
+			ostringstream prefix;
+			prefix << "BOX_c3_" << i;
+			ofstream dat(dirpath + prefix.str() + ".dat");
+			dat.precision(16);
+			dat << capd::ddeshelper::to_dat(box[0]) << " ";
+			dat << capd::ddeshelper::to_dat(box[1]) << " ";
+			dat << capd::ddeshelper::to_dat(interval(-1, 1)) << " ";
+			dat << capd::ddeshelper::to_dat(interval(-1, 1)) << " ";
+			dat.close();
+
+			cout << endl;
+		}
+
+
 
 		return 0;
 	}

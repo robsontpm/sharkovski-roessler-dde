@@ -55,7 +55,8 @@ int main()
 		int CUT_Z = 3;
 		for (int iy = 0; iy < CUT_Y; ++iy)
 			for (int iz = 0; iz < CUT_Z; ++iz)
-				cout << "Is the grid G3 forward-invariant? ... " << iy << " " << iz << ": " << roessler525.inside_piece(grid3, grid3, CUT_Y, CUT_Z, iy, iz) << endl;
+				throw std::logic_error("DEPRECATED PROGRAM!");
+				//cout << "Is the grid G3 forward-invariant? ... " << iy << " " << iz << ": " << roessler525.inside_piece(grid3, grid3, CUT_Y, CUT_Z, iy, iz) << endl;
 		cout << "----------------------------------------" << endl;
 	}
 	catch(exception& e)
