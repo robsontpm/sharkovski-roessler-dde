@@ -16,6 +16,25 @@ c3_2_Y = -2.896911885108674e-05
 # przepisałem je z danych wyżej (program gencoords je zwraca... Powinno byc automatycznie, ale na razie jest tak..)
 
 
+set terminal pdf size 4,4
+set output 'rossler-3period-main-coords.pdf'
+set zlabel 'z(t)' offset 1,0
+set xlabel 'x(t)'
+set ylabel 'y(t)' offset -2,0
+unset colorbox
+
+set xrange [-4:4]
+set yrange [-0.0005:0.0005]
+
+set ytics -10,5,10 offset 0.25,-0.25
+set xtics -10,5,10 offset -0.25,-0.25
+
+set margin -2
+set tmargin -10
+
+set xlabel 'y'
+set ylabel 'z'
+
 plot \
     'bin/plots/BOX_grid3.dat' u 1:3:2:4 w boxxy fs solid 0.50 fc rgb 'light-goldenrod' notitle,\
     'bin/plots/Pgrid3.dat' u 1:3:2:4 w boxxy fs solid 0.50 fc rgb 'goldenrod' notitle,\

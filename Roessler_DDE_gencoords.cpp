@@ -64,7 +64,7 @@ int main()
 
 		DVector ivp {0.,-5,0.03};
 		// TODO: UNCOMMENT FOR LATER
-		//computeCoordsForward(roessler525, ivp, grid3, CUTS_Y, CUTS_Z);
+		computeCoordsForward(roessler525, ivp, grid3, CUTS_Y, CUTS_Z);
 
 		// compute translation of the mid points of the sets c[i]:
 		IVector I_x0(roessler525.M());
