@@ -86,10 +86,11 @@ int main(int argc, char* argv[])
 		// so we cannot get it only from ODE finite dimensional data.
 		auto choice_mid = [&](std::string const& name) {
 			string filename = "G_x0.ivector.bin";
-			try {
+			if (name[0] != 'G'){
 				int i = get_C_number(name);
 				ostringstream oss; oss << "C_" << i << "_x0.ivector.bin";
-			} catch (...) {}
+				filename = oss.str();
+			}
 			IVector mid_point(roessler525.M());
 			capd::ddeshelper::readBinary(WD + filename, mid_point);
 			SHA_DEBUG("using midpoint from '" << filename << "'") << endl;

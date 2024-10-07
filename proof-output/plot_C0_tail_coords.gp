@@ -34,5 +34,5 @@ set tmargin -10
 
 plot \
     'BOX_C_1.dat' u 5:7:6:8 w boxxy fs solid 0.50 fc rgb 'light-green' notitle,\
-    'C_0-Pimages-all.dat' u 5:7:6:8 w boxxy fs solid 0.50 fc rgb 'red' notitle,\
+    'PC_0-Pimages-all.dat' u 5:7:6:8 w boxxy fs solid 0.50 fc rgb 'red' notitle,\
     

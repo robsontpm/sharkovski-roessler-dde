@@ -34,5 +34,5 @@ set tmargin -10
 
 plot \
     'BOX_G.dat' u 5:7:6:8 w boxxy fs solid 0.50 fc rgb 'light-goldenrod' notitle,\
-    'G-Pimages-all.dat' u 5:7:6:8 w boxxy fs solid 0.50 fc rgb 'goldenrod' notitle,\
+    'PG-Pimages-all.dat' u 5:7:6:8 w boxxy fs solid 0.50 fc rgb 'goldenrod' notitle,\
     

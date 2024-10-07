@@ -34,12 +34,12 @@ set tmargin -10
 
 plot \
     'BOX_G.dat' u 1:3:2:4 w boxxy fs solid 0.50 fc rgb 'light-goldenrod' notitle,\
-    'G-Pimages-all.dat' u 1:3:2:4 w boxxy fs solid 0.50 fc rgb 'goldenrod' notitle,\
+    'PG-Pimages-all.dat' u 1:3:2:4 w boxxy fs solid 0.50 fc rgb 'goldenrod' notitle,\
     'BOX_C_0.dat' u 1:3:2:4 w boxxy fs solid 0.50 fc rgb 'light-red' notitle,\
     'BOX_C_1.dat' u 1:3:2:4 w boxxy fs solid 0.50 fc rgb 'light-green' notitle,\
     'BOX_C_2.dat' u 1:3:2:4 w boxxy fs solid 0.50 fc rgb 'light-blue' notitle,\
-    'C_0-Pimages-all.dat' u ($1+C_1_X):($3+C_1_Y):2:4 w boxxy fs solid 0.50 fc rgb 'red' notitle,\
-    'C_1-Pimages-all.dat' u ($1+C_2_X):($3+C_2_Y):2:4 w boxxy fs solid 0.50 fc rgb 'green' notitle,\
-    'C_2-Pimages-all.dat' u ($1+C_0_X):($3+C_0_Y):2:4 w boxxy fs solid 0.50 fc rgb 'blue' notitle,\
+    'PC_0-Pimages-all.dat' u ($1+C_1_X):($3+C_1_Y):2:4 w boxxy fs solid 0.50 fc rgb 'red' notitle,\
+    'PC_1-Pimages-all.dat' u ($1+C_2_X):($3+C_2_Y):2:4 w boxxy fs solid 0.50 fc rgb 'green' notitle,\
+    'PC_2-Pimages-all.dat' u ($1+C_0_X):($3+C_0_Y):2:4 w boxxy fs solid 0.50 fc rgb 'blue' notitle,\
     
 

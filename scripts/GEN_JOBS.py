@@ -24,10 +24,10 @@ SCRIPT_DIR="../bin/"            # script directory w.r.t. to WORKING_DIRECTORY
 # here we have 4 coverings: G3=>G3, Ci=>C{i+1} (modulo 3)
 # the output of the programs should go to 'out' directory (this is technical)
 COVERING_SETUP=[
-    { "src": "G", "dst": "G", "out": "G", "cut_y": 1000, "cut_z": 3, },
-    { "src": "S_0", "dst": "S_1", "out": "PS_1", "cut_y": 10, "cut_z": 3, },
-    { "src": "S_1", "dst": "S_2", "out": "PS_1", "cut_y": 40, "cut_z": 3, },
-    { "src": "S_2", "dst": "S_0", "out": "PS_2", "cut_y": 20, "cut_z": 3, },
+    { "src": "G", "dst": "G", "out": "PG", "cut_y": 1000, "cut_z": 3, },
+    { "src": "C_0", "dst": "C_1", "out": "PC_0", "cut_y": 10, "cut_z": 3, },
+    { "src": "C_1", "dst": "C_2", "out": "PC_1", "cut_y": 40, "cut_z": 3, },
+    { "src": "C_2", "dst": "C_0", "out": "PC_2", "cut_y": 20, "cut_z": 3, },
 ]
 # now we setup two major jobs: first is to prepare set,
 # the second job is to just run the proof. 
