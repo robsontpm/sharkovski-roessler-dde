@@ -5,6 +5,8 @@ bin-*/
 __deprecated__
 log_prep.txt
 log_proof.txt
+tmp/
+proof-output/*/
 
 # eclipse project
 .cproject

@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
 	parser.parse("src=", str_src, "id of the lhs set in covering relation: 'C[i]' - i-th set, or 'G' - the grid");
 	parser.parse("dst=", str_dst, "id of the rhs set in covering relation: 'C[i]' - i-th set, or 'G' - the grid");
 	parser.parse("out=", outname, "prefix of the name of the files generated with this program");
-	parser.parse("wd=", WD, "the working directory of the program, i.e. where to look for data and to put results. Should end with '/'.");
+	parser.parse("wd=", WD, "the working directory of the program, i.e. where to look for data and to put results. Should end with a '/'.");
 	verbose = parser.parse("verbose", std::string("print more output")) || parser.parse("debug", std::string("same as verbose"));
 	if (parser.isHelpRequested()){
 		std::cout << parser.getHelp() << endl;
@@ -47,12 +47,13 @@ int main(int argc, char* argv[])
 	if (WD == "") WD = "./";
 	if (WD.back() != '/') WD += "/";
 
-  	cout.precision(16);
-	cout << boolalpha;  
-	SHA_DEBUG(parser.getCommandLine()) << endl;
-	SHA_DEBUG("The working Directory is '" << WD << "'") << endl;
+  	cout.precision(16);	// precision of nonrigorous output
+	cout << boolalpha;  // outputting bools as true/false
+	SHA_DEBUG("# " << parser.getCommandLine()) << endl;
+	SHA_DEBUG("# The working Directory is '" << WD << "'") << endl;
 	try
 	{			
+		// for shorter writing later
 		auto& roessler525 = config.roessler525;
 		auto& C = config.c3;
 		auto& G = config.grid3;
@@ -72,7 +73,6 @@ int main(int argc, char* argv[])
 		// it also checks if the data given by the user is well-formed
 		// this is just technical, and has nothing to do with the actual proof.
 		auto choice_set = [&](std::string const& name) -> HSet2D& {
-			if (name.length() < 4) throw std::logic_error("Bad set name: too short.");
 			if (name[0] == 'G') {
 				SHA_DEBUG("using set G") << endl;
 				return G;
@@ -99,19 +99,28 @@ int main(int argc, char* argv[])
 		// the r0 and Xi (tail) part would be the same for all sets
 		// except maybe at the head z(x_0). We will set the head from the
 		// selected finite dimensional sets for ODE
+		// TODO: think if we should add a way to read from .txt files
+		// TODO: (it again would be rigorous and architecture independent)
+		// TODO: (but then we are dealing with digit representation problem)
+		// TODO: 2) - make the config for the filenames!
 		IVector rel_r0(roessler525.M());
 		IVector rel_Xi(roessler525.d * roessler525.p);
 		capd::ddeshelper::readBinary(WD + "G_r0.ivector.bin", rel_r0);
 		capd::ddeshelper::readBinary(WD + "G_Xi.ivector.bin", rel_Xi);
 		IMatrix M(roessler525.M(), roessler525.M()), invM(roessler525.M(), roessler525.M());
 		capd::ddeshelper::readBinary(WD + "G_M.imatrix.bin", M);
-		capd::ddeshelper::readBinary(WD + "G_inv<.imatrix.bin", invM);
+		capd::ddeshelper::readBinary(WD + "G_invM.imatrix.bin", invM);
 
 		// now we select input data using helper functions
 		HSet2D& src_set = choice_set(str_src);
 		auto src_mid = choice_mid(str_src);
 		HSet2D& dst_set = choice_set(str_dst);
 		auto dst_mid = choice_mid(str_dst);
+
+		SHA_DEBUG("src_mid: " << ddeshelper::slice(src_mid)) << endl;
+		SHA_DEBUG("dst_mid: " << ddeshelper::slice(dst_mid)) << endl;
+		SHA_DEBUG("r0:      " << ddeshelper::slice(rel_r0)) << endl;
+		SHA_DEBUG("Xi:      " << ddeshelper::slice(rel_Xi)) << endl;
 
 		// in those two variables we store the image of the selected piece after the poincare map
 		IVector Phull(roessler525.M()), PXi(roessler525.p * roessler525.d);
@@ -125,20 +134,21 @@ int main(int argc, char* argv[])
 			Phull, PXi				// the image of the piece, transformed to good coordinates
 		);
 
-		// output information on the check
-		ostringstream oss; oss << boolalpha;
-		oss << str_src << "=>" << str_dst << " " << iy << "/" << CUT_Y << " " << iz << "/" << CUT_Z << ": " << result;
-		cout << oss.str() << endl;
+		// output information on the check, if true, we have proven the inclusion
+		cout << str_src << "=>" << str_dst << " " << iy << "/" << CUT_Y << " " << iz << "/" << CUT_Z << ": " << result << endl;
 
-		// save data for makeing pictures
+		// what follows is just for pictures, and is not important from the proof perspective.
+		// save data for making pictures
 		ostringstream prefix;
-		prefix << outname << "-iy" << iy << "-" << iz;
-		string dirpath = WD + "Pimages/";
+		prefix << "iy-" << iy << "--iz-" << iz;
+		string dirpath = outname + "-Pimages/";
 		capd::ddeshelper::mkdir_p(dirpath);
-		ofstream out(dirpath + prefix.str() + ".ivector");
+		auto filepath = dirpath + prefix.str() + ".ivector";
+		ofstream out(filepath);
 		out.precision(16);
 		out << Phull << endl;
 		out.close();
+		SHA_DEBUG("P(set) saved in '" << filepath << "'") << endl;
 
 		// compute the size relative to grid3 on the tail and output data suitable for drawing!
 		for (int i = 3; i < roessler525.M(); i++)
@@ -158,18 +168,25 @@ int main(int argc, char* argv[])
 		for (int i = 1; i < PXi.dimension(); i++)
 			hullXi = intervalHull(hullXi, (interval)PXi[i]);
 
-		ofstream dat(dirpath + prefix.str() + ".dat");
+		filepath = dirpath + prefix.str() + ".dat";
+		ofstream dat(filepath);
 		dat.precision(16);
 
+		// just to have info what we have in the file
+		// the y coordinate is more like in the dominant direction, computed during
+		// the preparation procedure (see paper and/or docs in Roesler_DDE_gencoords for more explanation)
+		dat << "# y_mid y_radius z_mid z_radius tail_hull_mid tail_hull_radius Xi_hull_mid Xi_hull_radius\n";
 		dat << capd::ddeshelper::to_dat(Phull[1]) << " ";
 		dat << capd::ddeshelper::to_dat(Phull[2]) << " ";
 		dat << capd::ddeshelper::to_dat(hullPx) << " ";
 		dat << capd::ddeshelper::to_dat(hullXi) << " ";
 
 		dat.close();
+		SHA_DEBUG("Max radii of head, tail and Xi saved in '" << filepath << "'") << endl;
 	} catch(exception& e){
-
+		// output information about exception and the piece indices
 		cout << iy << " " << iz << ": Exception caught: "<< e.what() << endl;
+		cout << str_src << "=>" << str_dst << " " << iy << "/" << CUT_Y << " " << iz << "/" << CUT_Z << ": " << false << endl;
   	}
   return 0;
 } // main()

@@ -22,7 +22,7 @@ struct Config {
 	vector<HSet2D> c3;
 
 
-	Config(interval par_epsi): roessler525(a, par_epsi, tau) {
+	Config(interval par_epsi): roessler525(tau, par_epsi, a) {
 		// the data for the sets and their names are taken from [GZ2022]
 		grid3 = HSet2D(
 					IVector ({-6.38401, 0.0327544}),
@@ -35,7 +35,7 @@ struct Config {
 		c3[2] = HSet2D(IVector ({-9.74889, 0.0307529}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.036,0.00072}));			// cube 3
 	}
 
-	Config() { Config(epsi); }
+	Config(): Config(epsi) {}
 } config;
 
 

@@ -33,6 +33,9 @@ template class capd::ddeshelper::RigorousHelper<Eq, 1, IMatrix, IVector>;
 ///	Some auxiliary functions
 //////////////////////////////////////////////////////////////////////////////
 
+/*
+ *  Just plots some nice pictures from the non-rigorous computations.
+ */
 void splotMany(
 		system3d& sys,
 		std::vector<DVector>& segments,
@@ -56,11 +59,14 @@ void splotMany(
 	std::cerr << "Plotting DONE" << std::endl;
 
 	capd::ddeshelper::splot_many(plotpath, gplots, false, "all");
-	// force plot, as xplot is precompiled without the flag...
+	#ifdef DDES_ALLOW_SYSTEM
+	// TODO: we need to force plot, here as xplot is usually precompiled without the flag, unfortunatelly
 	std::ostringstream cmd; cmd << "cd '" << plotpath << "' && gnuplot 'all.gp'";
 	capd::ddeshelper::runSystemCommand(cmd.str());
+	#endif
 }
 
+/** define this function for the fixed types in template arguments. See utils.h for the template */
 IMatrix cut(IMatrix const& M){
 	if(M.numberOfColumns()<2 or M.numberOfRows() < 2) throw std::logic_error("cut(matrix): too few dimensions!");
 	if(M.numberOfColumns()==2 and M.numberOfRows()==2) return M;
@@ -71,6 +77,7 @@ IMatrix cut(IMatrix const& M){
 	return y;
 }
 
+/** define this function for the fixed types in template arguments. See utils.h for the template */
 IMatrix expand(IMatrix const& M)
 {		
 	if(M.numberOfColumns()==3 and M.numberOfRows()==3) return M;
@@ -89,7 +96,10 @@ IMatrix expand(IMatrix const& M)
 ///	system3d structure methods
 //////////////////////////////////////////////////////////////////////////////
 
-// checks if the image of hset1 lies inside hset2
+/*
+ * checks if the image of hset1 lies inside hset2
+ * TODO: better docs.
+ */
 bool system3d::estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iy, int iz)
 {
 	// TODO: spraw, aby brał pod uwagę hset1 i hset2 !!!! WAZNE!
@@ -98,6 +108,7 @@ bool system3d::estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howM
 	IMatrix invC(M(), M());
 	IVector x0(M());
 	IVector r0(M());
+	// TODO: get data from outside! as inside_piece
 	capd::ddeshelper::readBinary("grid3_x0.ivector.bin", x0);
 	capd::ddeshelper::readBinary("grid3_C.imatrix.bin", C);
 	capd::ddeshelper::readBinary("grid3_r0.ivector.bin", r0);
@@ -166,7 +177,10 @@ bool system3d::estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howM
 	return false;
 }
 
-// checks if the image of hset1 lies inside hset2
+/*
+ * Checks if the image of hset1 lies inside hset2
+ *
+ */
 bool system3d::refine_box(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iteration)
 {
 	// TODO: spraw, aby brał pod uwagę hset1 i hset2 !!!! WAZNE!
@@ -305,6 +319,8 @@ bool system3d::inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiece
 
 	// TODO: spraw, aby brał pod uwagę hset1 i hset2 !!!! WAZNE!
 
+	// TODO:
+
 	IMatrix C(M(), M());
 	IMatrix invC(M(), M());
 	IVector x0(M());
@@ -372,7 +388,13 @@ bool system3d::inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiece
 	return liesInside;
 }
 
-// checks if the (piece of) image of hset1 lies inside hset2
+/*
+ * Checks if the (piece of) image of hset1 lies inside hset2:
+ *
+ * i.e: return P(hset1) \subset hset2
+ *
+ * This is the simplest form of covering relation, with all stable directions.
+ */
 bool system3d::inside_piece(
 		const HSet2D &hset1, IVector const& mid1,
 		const HSet2D &hset2, IVector const& mid2,
@@ -382,24 +404,12 @@ bool system3d::inside_piece(
 		int pieceH, int pieceV,
 		IVector &outPhull, IVector &outPXi)
 {
-
 	// TODO: spraw, aby brał pod uwagę hset1 i hset2 !!!! WAZNE!
 	// TODO: check if the above is done now
 
-	// TODO: add checks for the dimensions of arrays and vectors?
-//	IMatrix C(M(), M());
-//	IMatrix invC(M(), M());
-	//IVector x0(M());
-//	IVector r0(M());
-//	IVector Xi0(d * p);
-	//capd::ddeshelper::readBinary("grid3_x0.ivector.bin", x0);
-	//x0 = mid1;
-//	capd::ddeshelper::readBinary("grid3_C.imatrix.bin", C);
-//	capd::ddeshelper::readBinary("grid3_new_r0.ivector.bin", r0);
-//	capd::ddeshelper::readBinary("grid3_new_Xi.ivector.bin", Xi0);
-//	capd::ddeshelper::readBinary("grid3_invC.imatrix.bin", invC);
-	// we assume x0 is generated from the mid point of hset2...
-	// if not, we need to adjust... TODO: dorobić...
+	// TODO: Before we had control on M, invM, etc.
+	// TODO: Now, we get all from outside. Add checks for the dimensions of arrays and vectors?
+	// TODO: It is not so important, as the exceptions will be thrown otherwise.
 
 	IVector chunk_box = r0;
 
