@@ -1,21 +1,30 @@
-//////////////////////////////////////////////////////////////////////////////
-///
-///  @file utils.h
-///  
-///  @author ag  @date   Mar 5, 2020
-//////////////////////////////////////////////////////////////////////////////
+#ifndef _SHA_ROS_DDE_UTILS_
+#define _SHA_ROS_DDE_UTILS_
 
+/**
+ * We are here building on top of the results from work
+ * [GZ2022] A~Gierzkiewicz and P.~Zgliczy\'nski. ,,From the {S}harkovskii theorem to periodic orbits for the {R}\"ossler system.'', Journal of Differential Equations, 314:733--751, (2022).
+ * So we inherited the structure from the computer assisted part there.
+ *
+ * You should check the 'utils.h' file there.
+ */
 
-#ifndef _EXAMPLES_PROJECTSTARTER_UTILS_H_
-#define _EXAMPLES_PROJECTSTARTER_UTILS_H_
+// this tells the compilation system to have
+#define DDES_ALLOW_SYSTEM
 
-#include "capd/intervals/lib.h"
-#include "capd/capdlib.h"
 #include <iostream>
+#include <vector>
+#include <numeric>
+
+// those are taken from the work [GZ2022]
+// we will be building on top of data from this work
+#include "capd/capdlib.h"
+#include "capd/intervals/lib.h"
 #include "capd/covrel/HSet2D.h"
 #include "capd/dynsys/DynSysMap.h"
 #include "capd/covrel/HSetMD.h"
 
+// those add access to DDE codes.
 #include <capd/ddes/ddeslib.h>
 #include <capd/ddeshelper/ddeshelperlib.h>
 #include <capd/ddeshelper/DDEHelperRigorous.hpp>
@@ -23,112 +32,24 @@
 #include <capd/ddeshelper/DDEHelperDrawing.h>
 #include "equation.h"
 
-#include <vector>
-#include <array>
-#include <numeric>
-
 using namespace std;
 using namespace capd;			
 
+/** this is standard def. from CAPD used by the [GZ2022] code */
 typedef capd::covrel::HSet2D<DMatrix, IMatrix> HSet2D;
-typedef capd::dynsys::DynSysMap<IMap> DynSysMap; ///TODO: czy potrzebne ???
+typedef capd::dynsys::DynSysMap<IMap> DynSysMap;
 typedef capd::covrel::HSetMD<DMatrix,IMatrix> HSet;
 typedef capd::covrel::GridSet<IMatrix> GridSet;
-
-//namespace capd{
-//namespace covrel{
-//
-///**
-// This class provides a h-set in an arbitrary dimension
-// */
-//template<typename MatrixT, typename IMatrixT>
-//class MyHSetMD: capd::covrel::HSetMD<MatrixT, IMatrixT> {
-//public:
-//  typedef MatrixT MatrixType;
-//  typedef IMatrixT IMatrixType;
-//  typedef typename MatrixType::RowVectorType VectorType;
-//  typedef typename IMatrixType::RowVectorType IVectorType;
-//  typedef typename IVectorType::ScalarType ScalarType;
-//  typedef typename VectorType::ScalarType BoundType;
-//  typedef typename VectorType::size_type size_type;
-//
-//  // we assume that the set is represented as center + Base * B(0,r)
-//  // uDim denotes a number of unstable directions
-//  // sDim denotes a number of stable directions
-//  MyHSetMD() {}
-//  MyHSetMD(const VectorType& center, const MatrixType& Base, const IMatrixType& InvBase, size_type uDim, size_type sDim, const VectorType& r);
-//  MyHSetMD(const IVectorType & center, const IMatrixType& Base, const IMatrixType& InvBase, size_type uDim, size_type sDim, const VectorType& r);
-//  virtual ~MyHSetMD() {}
-//
-//  /**
-//   * in the \c grid it returns uniform grid of the given face
-//   */
-//  template<typename IMatrix>
-//  GridSet<IMatrix>& gridFace(
-//      GridSet<IMatrix>& grid,
-//      const std::vector<size_type>& gridSizes,
-//      const std::vector<size_type>& dimensions,
-//      size_type totalDimension,
-//      size_type coordinateToFix,
-//      Side side = bothSides
-//  ) const;
-//
-//  /// this procedure creates a grid of the whole h-set
-//  /// in the following form: G.center[i] + G.C * G.r
-//  /// d is a vector of indices of coordinates if the set is embeded in higher dimension
-//  template<typename IMatrix>
-//  GridSet<IMatrix>& gridSet(
-//      GridSet<IMatrix>& G,
-//      const std::vector<size_type>& grid,
-//      const std::vector<size_type>& d,
-//      size_type totalDimension
-//  ) const;
-//
-//
-//  const IVectorType & center() const {return m_Ix;} ///< center of h-set
-//  const IMatrixType & coordinateSystem() const {return m_IB;} ///< matrix of base vectors
-//  const IMatrixType & invCoordinateSystem() const {return m_invIB;}
-//  IVectorType box() const { ///< h-set in 'proper' coordinate system (it is a product of intervals)
-//    IVectorType b(m_r.dimension());
-//    for(size_type i=0; i<m_r.dimension(); ++i)
-//    b[i] = ScalarType(-m_r[i],m_r[i]);
-//    return b;
-//  }
-//  const VectorType & radius() {return m_r;} ///< returns vector of radiuses (in each direction)
-//  size_type unstableDimension() const {return m_uDim;} ///< number of unstable dimensions
-//  size_type stableDimension() const {return m_sDim;} ///< number of stable dimensions
-//  const VectorType & get_x() const { return m_x;}
-//  const MatrixType & get_B() const { return m_B;}
-//  const VectorType & get_r() const { return m_r;}
-//  const IVectorType & get_I_x() const { return m_Ix;}
-//  const IMatrixType & get_I_B() const { return m_IB;}
-//  const IMatrixType & get_I_invB() const { return m_invIB;}
-//
-//  virtual std::string show() const;
-//  std::string showInfo() const;
-//  friend std::ostream & operator << (std::ostream & stream, const HSetMD & set ){
-//  		stream << set.show();
-//  		return stream;
-//  }
-//protected:
-//  VectorType m_x; ///< center point
-//  MatrixType m_B; ///< coordinate system
-//  IVectorType m_Ix; ///< rigorous center point
-//  IMatrixType m_IB, m_invIB; ///< rigorous coordinate system and its inverse
-//
-//  size_type m_uDim, ///< number of unstable dimensions
-//            m_sDim; ///< number of stable dimensions
-//  VectorType m_r; ///< radiuses of balls (used both for non-rigorous and rigorous version)
-//}; // class HSetMD
-//
-//}// namespace covrel
-//}// namespace capd
 
 /**
  * we will use Rossler DDE with interval parameters.
  * This is the definition of f from x'(t) = f(x(t), x(t-tau)).
  */
 typedef Rossler<interval> Eq;
+/**
+ * This is the equation for non-rigorous computations
+ * done when generating good coordinate frame.
+ */
 typedef Rossler<double> DEq;
 
 /** this contains all necessary ingredients to do rigorous numerics in DDEs */
@@ -137,7 +58,8 @@ typedef capd::ddeshelper::NonrigorousHelper<DEq, 1, DMatrix, DVector> Numerics;
 /** this contains all necessary ingredients to do rigorous numerics in DDEs */
 typedef capd::ddeshelper::RigorousHelper<Eq, 1, IMatrix, IVector> Setup;
 
-// below just renaming
+// below just renaming for use in the code
+// We use prefix 'D' to mark non-rigorous version
 typedef Numerics::Grid DGrid;				// grid for basic curve
 typedef Numerics::DDEq DDDEq;
 typedef Numerics::Solution DSolution;		// basic description for a curve
@@ -149,115 +71,126 @@ typedef Numerics::PoincareMap DPoincare;
 typedef Setup::Grid Grid;					// grid for the solutions in the C^n_p space.
 typedef Setup::DDEq DDEq;					// this is F from the abstract formulation x'(t) = F(x_t), that contains the information on delays. In our case F(x_t) := f(x_t(0), x_t(-tau)).
 typedef Setup::Solution DDESolution;		// basic set type for DDEs
-typedef Setup::SetType AmbientSet;		    // ??? TODO: docs
+typedef Setup::SetType AmbientSet;		    // I call 'Ambient' the space of \R^3, in which the head of the solution lives: z(x_t)
 typedef Setup::Solver DDESolver;			// semidynamical system
 typedef Setup::PoincareMap DDEPoincareMap;	// Poincare map for the semidynamical system
 typedef Setup::Section DDESection;			// basic section for DDEs
 
-typedef std::pair<DVector, DMatrix> AffineCoordinates;
-typedef std::vector<AffineCoordinates> SimpleHistory;
-typedef std::vector<AffineCoordinates> SimpleJet;
-typedef std::vector<SimpleJet> HighOrderHistory;
+/** just a forward declaration, so that helper functions see it */
+struct system3d;
 
 
 //////////////////////////////////////////////////////////////////////////////
 ///	Some auxiliary functions
 //////////////////////////////////////////////////////////////////////////////
 
-// cuts the first coordinate of an interval vector
-IVector cut(IVector x);	
-DVector cut(DVector x);	
-IMatrix cut(IMatrix M);	
+/**
+ * nonrigorous. Makes a nice gnuplot of many segments of solutions (stored as a vector of DVector)
+ * and saves it under appropriate file in the current working directory (wd).
+ *
+ * It interprets each DVector as a segment of solutions in the system sys.
+ * NOTE: wd must have trailing '/'! Default is "./"
+ */
+void splotMany(system3d& sys, std::vector<DVector>& segs, std::string const& name, std::string const& wd="./");
+
+// the projection of a vector (x, y, z, ...) to 2 dimensions (y, z). Unless the vector is already 2 dim, when it just returns it.
+template<typename VT> VT cut(VT const& x){
+	if(x.dimension()<2) throw std::logic_error("cut(vector): too few dimensions!");
+	if(x.dimension()==2) return x;
+	VT y(2);
+	for (int i = 0; i < 2; ++i)	y[i]=x[i+1];
+	return y;
+}
+// cuts a matrix to (2x2), removing leading row and column. Unless the matrix is already 2x2, when it just returns it.
+IMatrix cut(IMatrix const& M);
 			
-//prepends an interval 2-vector (or 2x2 matrix) to 3-vector with zero
-IVector expand(IVector x);	
-DVector expand(DVector x);
-IMatrix expand(IMatrix M);	
-
-/////////////////////////////////////////////////////////////////////////
-/// SecMap class
-/////////////////////////////////////////////////////////////////////////
-
-// 2D Poincare Map image of an interval vector on the x=0 section 
-class SecMap	
-{
-public:
-	DDEPoincareMap *P;
-	Grid *grid;
-	SecMap(DDEPoincareMap &Q, Grid &g) {P=&Q; grid = &g;}	
-	SecMap(){};						
-	
-//	IVector image(const IVector &x,IMatrix &DP, const int iter = 1) const;
-	IVector image(const IVector &x, const int iter = 1) const;
-//	IVector operator()(const IVector &x,IMatrix &DP, const int iter = 1) const {return image(x,DP,iter);}
-	IVector operator()(const IVector &x, const int iter = 1) const {return image(x,iter);}
-	
-};
+//prepends a vector with an extra dimension at the front, zero on that extra dim. If is already 3 dim, then return it. S
+template<typename VT> VT expand(VT const& x){
+	if(x.dimension()==3) return x;
+	if(x.dimension()!=2) throw std::logic_error("expand(vector): bad dimensions");
+	VT y({0.,0.,0.});
+	for (int i = 0; i < 2; ++i)	y[i+1]=x[i];
+	return y;
+}
+//prepends a matrix with an extra dimension at the front, with identity on this block. If is already 3 dim, then return it. S
+IMatrix expand(IMatrix const& M);
 
 //////////////////////////////////////////////////////////////////////////////
 ///	system3d structure
 //////////////////////////////////////////////////////////////////////////////
 
-// stores the Roessler system
+/*
+ * stores the Roessler system with the DDE term.
+ * it also stores all data necessary to integrate segments forward in time
+ * and gives helper methods for various activities, like crating segments,
+ * computing Poincare maps to section \pi_x z(X) = 0, etc.
+ */
 struct system3d
 {
-static const int d = 3;
-int p;
-interval tau, h;
-interval a, eps;
-Grid grid;
-DGrid dgrid;
-int order;
-Eq rhs;
-DDEq vf;
-DDESection section;
-DDESolver solver;
-DDEPoincareMap P;
-SecMap P2d;
-int iteration;
+	static const int d = 3;
+	int p;
+	interval tau, h;
+	interval a, eps;
+	Grid grid;
+	DGrid dgrid;
+	int order;
+	Eq rhs;
+	DDEq vf;
+	DDESection section;
+	DDESolver solver;
+	DDEPoincareMap P;
+	int iteration;
 
-typedef HighOrderHistory HistoryType;
+	system3d(
+			interval tau = interval(1.0),
+			interval eps = interval(0.00001),
+			interval aa = interval(5.7)
+	):	// constructor, default parameter a=5.7
+		p(64), tau(tau), h(tau/p), grid(h), dgrid(h.leftBound()), a(aa),
+		order(3),
+		rhs(aa, interval(0.2), eps),												// f(a, b,eps)
+		vf(rhs, grid(p)), 															// f(x_t), grid(p) = p*h = tau
+		section(3, 0),																// x=0 section
+		solver(vf, order * 3),														//max order = order*3
+		P(solver, section, poincare::MinusPlus),
+		iteration(1)
+		{
+			cerr << "p=" << p << endl;
+			cerr << "n=" << order << endl;
+			cerr << "tau=" << tau << endl;
+			cerr << "h=" << h << endl;
+			cerr << "epsi=" << eps << endl;
+			cerr << "a=" << a << endl;
+			P.setRequiredSteps(order * p);
+			P.setMaxSteps(1000);
+		}
 
-system3d(
-		const interval &tau = interval(1.0),
-		const interval &eps = interval(0.00001),
-		const interval &aa = interval(5.7)
-):	// constructor, default parameter a=5.7
-	p(64), tau(tau), h(tau/p), grid(h), dgrid(h.leftBound()), a(aa),
-	order(3),
-	rhs(aa, interval(0.2), eps),												// f(a, b,eps)
-	vf(rhs, grid(p)), 															// f(x_t), grid(p) = p*h = tau
-	section(3, 0),																// x=0 section
-	solver(vf, order * 3),														//max order = order*3	
-	P(solver, section, poincare::MinusPlus),
-	P2d(P, grid),
-	iteration(1)
-	{
-		cerr << "p=" << p << endl;
-		cerr << "n=" << order << endl;
-		cerr << "tau=" << tau << endl;
-		cerr << "h=" << h << endl;
-		cerr << "epsi=" << eps << endl;
-		cerr << "a=" << a << endl;
-		P.setRequiredSteps(order * p);	
-		P.setMaxSteps(1000);	
-	}
+	// TODO: check if this is deprecated and remove if so
+	bool refine_box(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
+	// TODO: check if this is deprecated and remove if so
+	bool inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
+	bool inside_piece(
+		const HSet2D &hset1, IVector const& mid1,
+		const HSet2D &hset2, IVector const& mid2,
+		const IVector& r0, const IVector& Xi0,
+		const IMatrix& C, const IMatrix& invC,
+		int howManyPiecesH, int howManyPiecesV, int pieceH, int pieceV,
+		IVector &outPimage, IVector &outPXi
+	);
+	bool estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iy, int iz);
 
-bool refine_box(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
-bool inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
-bool inside_piece(const HSet2D &hset1, IVector const& mid1, const HSet2D &hset2, IVector const& mid2, int howManyPiecesH, int howManyPiecesV, int pieceH, int pieceV, IVector &outPimage, IVector &outPXi);
-bool estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iy, int iz);
-void makeHistory(const HSet2D &hset);
-HistoryType makeHistoryD(const DVector& v0, const DMatrix& C, DVector& out_x0, std::vector<DVector>& out_coords);
-void makeHistoryC0(const DVector& v0, DVector& out_x0);
+	// returns the M - size of the finite representation of the segments.
+	int M() const { return (1 + (1+order) * p) * d; }
 
-int M() const { return (1 + (1+order) * p) * d; }
-
-DSolution makeDSegment(DVector vector){ DSolution sol(dgrid, -dgrid(p), -dgrid(0), order, {0.,0.,0.}); sol.set_x(vector); return sol; }
-DDESolution makeISegment(IVector vector){ DDESolution sol(grid, -grid(p), -grid(0), order, {0.,0.,0.}); sol.set_x(vector); return sol; } // TODO: check if this works...
+	// makes a rig segment, not a very DRY code, but the capdDDEs library forces that...
+	DSolution makeDSegment(DVector vector){ DSolution sol(dgrid, -dgrid(p), -dgrid(0), order, {0.,0.,0.}); sol.set_x(vector); return sol; }
+	// makes a rig segment, not a very DRY code, but the capdDDEs library forces that...
+	DDESolution makeISegment(IVector vector){ DDESolution sol(grid, -grid(p), -grid(0), order, {0.,0.,0.}); sol.set_x(vector); return sol; } // TODO: check if this works...
 };
 
+// This will be used to turn on/off the debug in programs.
+#define SHA_DEBUG(s) if(verbose) std::cerr << s << std::flush
 
-#endif //_EXAMPLES_PROJECTSTARTER_UTILS_H_
+#endif // _SHA_ROS_DDE_UTILS_
 
 

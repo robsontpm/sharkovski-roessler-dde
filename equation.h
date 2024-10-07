@@ -5,12 +5,12 @@
  * This class defines f in the right hand side of the DDE
  * (1) x'(t) = f(x(t), x(t-tau), ...)
  *
- * Here, we define R\"ossler ODE that does not depend explicitly on the past:
+ * Here, we define DDE perturbation of R\"ossler ODE of the following form:
  *
- * (2) x'(t) = f(x(t))
+ * (2) x'(t) = f(x(t)) + \epsilon * f(x(t - \tau))
  *
- * If you are doing your own stuff, the RHS of your equations should
- * follow this exemplary definition.
+ * Please note that the \tau is not the part of the parameters, as this is the parameter
+ * of the phasespace C^0([-\tau, 0], \R^3).
  *
  * It is a little harder than in the CAPD itself, as CAPD allows
  * for specifying RHS as a simple string. Here, the approach is similar
@@ -32,9 +32,9 @@ public:
 
 	/** default constructor for default values of parameters, its good to have one. */
 	Rossler(): a(ParamType(57) / ParamType(10)), b(ParamType(2) / ParamType(10)), eps(0) {}
-	/** construct eq for given parameter values */
+	/** construct eq. for given parameter values */
 	Rossler(ParamType a, ParamType b, ParamType eps): a(a), b(b), eps(eps) {}
-	/** construct eq taking parameters from a vector. It must be of this form for RigorousHelper to work! */
+	/** construct eq. taking parameters from a vector. It must be of this form for RigorousHelper to work! */
 	Rossler(ParamsVectorType const& params): a(params[0]), b(params[1]), eps(params[2]) {}
 
 	/** output dimension of the map f in DDE (1), R\"ossler is 3D  */
@@ -61,13 +61,13 @@ public:
 	 * The fx parameter (output), fx means 'f(x)', is the output of the operator.
 	 * It is for convenience of calling operator
 	 * (as the return type cannot be auto-deduced in C++!),
-	 * and also for avoiding excessive copy-consttructing, move-copying, etc.
+	 * and also for avoiding excessive copy-constructing, move-copying, etc.
 	 * It just alter the value of already existing vector given by reference.
 	 */
 	template<typename RealSpec, typename InVectorSpec, typename OutVectorSpec>
 	void operator()(const RealSpec& t, const InVectorSpec x, OutVectorSpec& fx) const {
-		fx[0] = -(x[1]+x[2]) - eps*(x[4]+x[5]);
-		fx[1] = x[0]+b*x[1] + eps*(x[3]+b*x[4]);
+		fx[0] = -(x[1]+x[2])    - eps*(x[4]+x[5]);
+		fx[1] =  x[0]+b*x[1]    + eps*(x[3]+b*x[4]);
 		fx[2] = b+x[2]*(x[0]-a) + eps*(b+x[5]*(x[3]-a));
 	}
 
