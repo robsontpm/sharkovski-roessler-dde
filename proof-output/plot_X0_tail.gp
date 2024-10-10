@@ -19,8 +19,8 @@ C_2_Y = -2.896911885108674e-05
 
 set terminal pdf size 4,3
 set output 'rossler-3period-X0-tail-coords.pdf'
-set xlabel 'max Ai'
-set ylabel 'max Xi' # offset -2,0
+set xlabel 'close tail'
+set ylabel 'far tail' # offset -2,0
 unset colorbox
 
 set xrange [-1.2:1.2]
@@ -33,6 +33,6 @@ set margin -2
 set tmargin -10
 
 plot \
-    'BOX_G.dat' u 5:7:6:8 w boxxy fs solid 0.50 fc rgb 'light-goldenrod' notitle,\
-    'PG-Pimages-all.dat' u 5:7:6:8 w boxxy fs solid 0.50 fc rgb 'goldenrod' notitle,\
+    'BOX_G.dat' u 5:7:6:8 w boxxy ls 1 fs solid 0.5 fc rgb 'light-goldenrod' notitle,\
+    'PG-Pimages-srt.dat' u 5:7:6:8 w boxxy ls 1 fs solid 0.5 fc rgb 'goldenrod' notitle,\
     
