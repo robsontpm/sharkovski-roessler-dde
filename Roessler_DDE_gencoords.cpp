@@ -36,6 +36,16 @@ void computeCoordsForward(
  */
 void save_box(std::string const& filepath, IVector const& ibox);
 
+/**
+ * This doeas kind of nonrigorous visualization
+ * of the set given in the good coords.
+ */
+void nonrig_box_plot(
+		std::string plotdir,
+		std::vector<DVector> const& attractor,
+		system3d& system, HSet2D& hset, int CUTS_Y, int CUTS_Z,
+		DVector const& ref, DVector const& ydir, DVector const& zdir);
+
 // Main function
 int main(int argc, char* argv[])
 {
@@ -83,8 +93,8 @@ int main(int argc, char* argv[])
 		Config local_config(EPSI);
 		// the names are inherited from paper [GZ2022]
 		auto& roessler525 = local_config.roessler525;
-		auto& c3 = config.c3;
-		auto& grid3 = config.grid3;
+		auto& c3 = local_config.c3;
+		auto& grid3 = local_config.grid3;
 		auto& grid = roessler525.grid;
 		auto& order = roessler525.order;
 
@@ -101,7 +111,7 @@ int main(int argc, char* argv[])
 		// this is a point that produces reasonably dense trajectory in the ODE for selected parameters
 		// and based on that it computes a reasonably good coordinates for the sets.
 		// it will save the coordinates in various files.
-		cout << "GENERATING coords... " << std::flush;
+		cout << "GENERATING coords... " << std::endl;
 		computeCoordsForward(
 			verbose,
 			roessler525,
@@ -119,13 +129,20 @@ int main(int argc, char* argv[])
 		std::ostringstream cmd; cmd << "cd '" << plotdir << "' && gnuplot 'trajectory.gp'";
 		capd::ddeshelper::runSystemCommand(cmd.str());
 		// end of fancy plots
-		cout << "DONE" << std::endl;
+		cout << "DONE GENERATING coords" << std::endl;
 
-		cout << "GENERATING C_i sets... " << std::endl;
 		// Now we compute translation of the mid points of the sets c[i].
 		auto ydir = I_C.column(1);
 		auto zdir = I_C.column(2);
+		// make a nonrig plot of the set
+		nonrig_box_plot(
+				plotdir, attractor, roessler525,
+				grid3, CUTS_Y, CUTS_Z,
+				capd::vectalg::midObject<DVector>(I_x0),
+				capd::vectalg::midObject<DVector>(ydir),
+				capd::vectalg::midObject<DVector>(zdir));
 
+		cout << "GENERATING C_i sets... " << std::endl;
 		// TODO: rethink!
 		// TODO: now that I have changed the head to match the old hset grid3,
 		// TODO: we should just now hmmm... what to do?
@@ -345,9 +362,6 @@ void nonrig_box_plot(
 		std::vector<DVector> const& attractor,
 		system3d& system, HSet2D& hset, int CUTS_Y, int CUTS_Z,
 		DVector const& ref, DVector const& ydir, DVector const& zdir){
-
-	// TODO: USE THIS FUNCTION!
-	// TODO: pass right ydir and zdir
 
 	auto& order = system.order;
 	auto& d = system.d;
