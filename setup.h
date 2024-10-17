@@ -21,7 +21,6 @@ struct Config {
 	HSet2D grid3;
 	vector<HSet2D> c3;
 
-
 	Config(interval par_epsi): roessler525(tau, par_epsi, a) {
 		// the data for the sets and their names are taken from [GZ2022]
 		grid3 = HSet2D(

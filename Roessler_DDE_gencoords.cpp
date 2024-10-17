@@ -10,6 +10,10 @@
  * in a theoretical sense and of very large dimension in rigorous numerics
  * it is not feasible to provide initial data by hand. This is why we need
  * an automatic procedure.
+ *
+ * The default values of parameters to this program, ale set to match
+ * the method used in the accompanying paper. The reader can experiment with
+ * other settings, if they wishes.
  * ========================================================================*/ 
 
 #include "setup.h"
@@ -19,90 +23,171 @@
  * (point on ection in the ODE. The coordiates are for the segment in the DDE system.
  */
 void computeCoordsForward(
+		bool verbose,
 		system3d& system, DVector const& ivp,
 		HSet2D& hset, int CUTS_Y, int CUTS_Z,
-		std::vector<DVector> fin_mid_others = {});
+		std::vector<DVector>& attractor_out, DSolution& solution_out,
+		IVector& x0_out, IMatrix& C_out, IVector& r0_out);
+
+/**
+ * This saves a representation of a box in good coordinates to a dat file
+ * (nonrigorous). This is just to use them in ploting pretty figures
+ * later.
+ */
+void save_box(std::string const& filepath, IVector const& ibox);
 
 // Main function
-int main()
+int main(int argc, char* argv[])
 {
-  	cout.precision(16);
-	cout << boolalpha;  
+	// this is a helper class to parse arguments from command line
+	// we will prepare a lot of commands and run them in parallel to get the
+	// speed boost. Each computation will check the conditions of the small
+	// chunk of the original set.
+	capd::ddeshelper::ArgumentParser parser(argc, argv);
+	int CUTS_Y = 100, CUTS_Z = 3;
+	string WD = "./tmp/";
+	bool verbose = false;
+	// we use setup with epsi=0 in this step.
+	// the generated coordinates should be good enough for small epsilons.
+	double EPSI = 0.;
+	// initial value for the nonrigorous computations.
+	// It should be such that the trajectory is quite dense in the attractor.
+	// Might be tricky for periodic-windows parameter values of the system.
+	DVector IVP {0.,-5,0.03};
+	parser.parse("ivp=", IVP, "initial value for the simulation. ");
+	parser.parse("epsi=", EPSI, "epsi value for the computation.");
+	parser.parse("cuty=", CUTS_Y, "how many pieces in y");
+	parser.parse("cutz=", CUTS_Z, "how many pieces in z");
+	parser.parse("wd=", WD, "the working directory of the program, i.e. where to look for data and to put results. Should end with a '/'.");
+	verbose = parser.parse("verbose", std::string("print more output")) || parser.parse("debug", std::string("same as verbose"));
+	if (parser.isHelpRequested()){
+		std::cout << parser.getHelp() << endl;
+		return 0;
+	}
+
+	// sanitize input
+	if (WD == "") WD = "./";
+	if (WD.back() != '/') WD += "/";
+	// here we will save plots / gnuplot files for figures
+	std::string plotdir = WD + "plots/";
+	capd::ddeshelper::mkdir_p(plotdir);
+
+  	cout.precision(16);	// precision of nonrigorous output
+	cout << boolalpha;  // outputting bools as true/false
+	SHA_DEBUG("# " << parser.getCommandLine()) << endl;
+	SHA_DEBUG("# The working Directory is '" << WD << "'") << endl;
+
 	try
 	{
-		 // we use setup with epsi set to 0. in this step.
-		Config config(interval(0.));
-		auto& roessler525 = config.roessler525;
+		// get the configuration of the Roessler system with the selected parameters.
+		Config local_config(EPSI);
+		// the names are inherited from paper [GZ2022]
+		auto& roessler525 = local_config.roessler525;
 		auto& c3 = config.c3;
 		auto& grid3 = config.grid3;
-		const int CUTS_Y = 100;
-		const int CUTS_Z = 3;
+		auto& grid = roessler525.grid;
+		auto& order = roessler525.order;
 
-		// this is a point that produces reasonably dense trajectory in the ODE for selected parameters
-		DVector ivp {0.,-5,0.03};
-		computeCoordsForward(roessler525, ivp, grid3, CUTS_Y, CUTS_Z);
-
-		// compute translation of the mid points of the sets c[i]:
+		// here we will store the resulting coordinate system
 		IVector I_x0(roessler525.M());
 		IMatrix I_C(roessler525.M(), roessler525.M());
-		capd::ddeshelper::readBinary("grid3_x0.ivector.bin", I_x0);
-		capd::ddeshelper::readBinary("grid3_C.imatrix.bin", I_C);
+		IVector I_r0(roessler525.M());
+		// here we will hold the attractor segments on the section, for visualization
+		std::vector<DVector> attractor;
+		// this will hold the whole solution for generating the attractor
+		// i.e. it will look like the Roesler attractor in 3D.
+		DSolution solution = roessler525.makeDSegment(DVector(roessler525.M()));
 
+		// this is a point that produces reasonably dense trajectory in the ODE for selected parameters
+		// and based on that it computes a reasonably good coordinates for the sets.
+		// it will save the coordinates in various files.
+		cout << "GENERATING coords... " << std::flush;
+		computeCoordsForward(
+			verbose,
+			roessler525,
+			IVP, grid3, CUTS_Y, CUTS_Z,
+			attractor, solution,
+			I_x0, I_C, I_r0
+		);
+		// do some fancy plots
+		splotMany(roessler525, attractor, "forward-history", plotdir);
+		std::string filename = "trajectory";
+		capd::ddeshelper::plot_value(plotdir + filename, solution.pastTime(), solution.currentTime(), roessler525.h.leftBound() / 10, solution, false);
+		std::ostringstream plot;
+		plot << "'" << filename << "ddes-plot.dat' u 3:5:7 with lines notitle";
+		capd::ddeshelper::splot_many(plotdir, { plot.str() }, false, "trajectory");
+		std::ostringstream cmd; cmd << "cd '" << plotdir << "' && gnuplot 'trajectory.gp'";
+		capd::ddeshelper::runSystemCommand(cmd.str());
+		// end of fancy plots
+		cout << "DONE" << std::endl;
+
+		cout << "GENERATING C_i sets... " << std::endl;
+		// Now we compute translation of the mid points of the sets c[i].
 		auto ydir = I_C.column(1);
 		auto zdir = I_C.column(2);
 
-		HSet2D gridAI (IVector ({I_x0[1], I_x0[2]}) , IMatrix ({{I_C[1][1], I_C[1][2]}, {I_C[2][1], I_C[2][2]}}) , DVector({3.63687,0.0004}));			// Attractor's container
-
-		// save data to do pretty pictures
-		IVector box = grid3.box();
-		ostringstream prefix;
-		prefix << "BOX_grid3";
-		string dirpath = "plots/";
-		capd::ddeshelper::mkdir_p(dirpath);
-		ofstream dat(dirpath + prefix.str() + ".dat");
-		dat.precision(16);
-		dat << capd::ddeshelper::to_dat(box[0]) << " ";
-		dat << capd::ddeshelper::to_dat(box[1]) << " ";
-		dat << capd::ddeshelper::to_dat(interval(-1, 1)) << " ";
-		dat << capd::ddeshelper::to_dat(interval(-1, 1)) << " ";
-		dat.close();
-
-		auto& refgrid = gridAI;
+		// TODO: rethink!
+		// TODO: now that I have changed the head to match the old hset grid3,
+		// TODO: we should just now hmmm... what to do?
+		// Attractor's container (TODO: rethink!) This should be just grid3 ??
+		//HSet2D gridAI (IVector ({I_x0[1], I_x0[2]}), IMatrix ({{I_C[1][1], I_C[1][2]}, {I_C[2][1], I_C[2][2]}}), DVector({3.63687,0.0004}));
+		//auto& refgrid = gridAI;
 		//auto& refgrid = grid3;
+		HSet2D refgrid(grid3.get_I_x(), grid3.get_I_B(), grid3.get_r());
 
-		cout << refgrid.get_I_B() << endl << refgrid.get_I_invB() << endl;
+		// transform the reference points of other sets (C_i's) to the good coordinate frame
+		SHA_DEBUG("refgrid.B = " << refgrid.get_I_B() << endl << "B^{-1} = " << refgrid.get_I_invB() << endl);
 		auto ref = refgrid.get_I_x();
 		auto invC = refgrid.get_I_invB();
-		for (int i = 0; i < 3; i++){
+		std::vector<IVector> I_c3;
+		for (int i = 0; i < c3.size(); i++){
 			auto c3_mid = c3[i].get_I_x();
 			auto diff = invC * (c3_mid - ref);
-			cout << "c3[" << i << "].mid in coordinates: " << diff << endl;
+			SHA_DEBUG("C[" << i << "].mid in coordinates: " << diff << endl);
 			auto new_c3 = capd::vectalg::midObject<DVector>(I_x0 + ydir * diff[0] + zdir * diff[1]);
-			cout << "head: " << new_c3[0] << " " ;
+			SHA_DEBUG("head: ");
 			new_c3[0] = 0.; // x = 0 on section
 			IVector v2d {new_c3[1], new_c3[2]};
-			cout << v2d << endl;
-			cout << "diff:" << v2d - c3_mid << endl;
+			SHA_DEBUG(v2d << endl << "diff:" << v2d - c3_mid << endl);
 
-			std::ostringstream filename;
-			filename << "c3_" << i << "_x0.ivector.bin";
-			capd::ddeshelper::saveBinary(filename.str(), IVector(new_c3));
+			std::ostringstream fileprefix;
+			fileprefix << "C_" << i;
+			capd::ddeshelper::saveBinary(WD + fileprefix.str() + "_x0.ivector.bin", IVector(new_c3));
+			I_c3.push_back(IVector(new_c3));
 
-			// save data to do pretty pictures
-			IVector box = diff + c3[i].box();
-			ostringstream prefix;
-			prefix << "BOX_c3_" << i;
-			ofstream dat(dirpath + prefix.str() + ".dat");
-			dat.precision(16);
-			dat << capd::ddeshelper::to_dat(box[0]) << " ";
-			dat << capd::ddeshelper::to_dat(box[1]) << " ";
-			dat << capd::ddeshelper::to_dat(interval(-1, 1)) << " ";
-			dat << capd::ddeshelper::to_dat(interval(-1, 1)) << " ";
-			dat.close();
-
-			cout << endl;
+			save_box(plotdir + "BOX_" + fileprefix.str() + ".dat", diff + c3[i].box());
+			cout << "C_" << i << " transformation done" << endl;
 		}
-		return 0;
+		cout << "DONE C_i sets... " << std::endl;
+
+		cout << "SAVING coords... " << std::flush;
+		// save data to do pretty pictures
+		save_box(plotdir + "BOX_G.dat", grid3.box());
+		// save machine representation of numbers
+		capd::ddeshelper::saveBinary(WD + "G_x0.ivector.bin", I_x0);
+		capd::ddeshelper::saveBinary(WD + "G_M.imatrix.bin", I_C);
+		capd::ddeshelper::saveBinary(WD + "G_r0.ivector.bin", I_r0);
+		// save human-readable representations (it might get machine precision loss)
+		std::ofstream human_readable_coords("human_readable_coords.txt");
+		human_readable_coords.precision(16);
+		human_readable_coords << "G_x0: " << endl;
+		human_readable_coords << capd::vectalg::midObject<DVector>(I_x0) << endl;
+		for (int i = 0; i < I_c3.size(); ++i){
+			human_readable_coords << "C_" << i << "_x0: " << endl;
+			human_readable_coords << capd::vectalg::midObject<DVector>(I_c3[i]) << endl;
+		}
+		human_readable_coords << "M: " << endl;
+		human_readable_coords << capd::vectalg::midObject<DMatrix>(I_C) << endl;
+		human_readable_coords << "r0: " << endl;
+		human_readable_coords << capd::vectalg::midObject<DVector>(I_r0) << endl;
+		std::cout << "DONE. Data saved in '" << WD << "'" << endl;
+		std::cout << "Please run from '" << WD << "' folder the following: " << endl;
+		std::cout << endl;
+		std::cout << "    {capdDDEsDIR}/bin/convmatrix ";
+		std::cout << roessler525.M() << " bin G_M.imatrix.bin ";
+		std::cout << "inv bin " << "G_invM.imatrix.bin" << endl;
+		std::cout << endl;
+		std::cout << "NOTE: you need to determine the relative/absolute path of convmatrix script w.r.t. '" << WD << "' path!" << endl;
 	}
 	catch(exception& e)
   	{
@@ -113,80 +198,95 @@ int main()
 
 
 void computeCoordsForward(
+		bool verbose,
 		system3d& system, DVector const& ivp,
 		HSet2D& hset, int CUTS_Y, int CUTS_Z,
-		std::vector<DVector> fin_mid_others){
+		std::vector<DVector>& attractor_out, DSolution& solution_out,
+		IVector& x0_out, IMatrix& C_out, IVector& r0_out){
 
+	// renaming for convenience
 	int& p = system.p;
 	int& order = system.order;
-	// const int& d = system.d;
-	int d = 3; // .... argh....
+	int d = system.d;
+	auto& attractor = attractor_out;
 	DGrid &grid = system.dgrid;
 
-	DEq rhs(system.a.leftBound(), 0.2, 0.);	// eps = 0.
+	// make the non-rigorous integrator for DDE
+	DEq rhs(system.a.leftBound(), 0.2, system.eps.mid().leftBound());
 	DDDEq vf(rhs, grid(p));
 	DSection section(3, 0, 0.);
 	DSolver solver(vf, order * 3);
 	DPoincare P(solver, section, poincare::MinusPlus);
 
+	// make data needed to propagate the initial fanction, which is constant.
 	DSolution constIVP(grid, -grid(p), grid(0), order, ivp);
 	DSolution Px(grid, -grid(p), grid(0), order, ivp);
-	DSolution solution = constIVP;
+	solution_out = constIVP;
 
-	std::vector<DVector> attractor;
+	// generate a lot of points (segments) on the section
 	double tp;
-	int NUM_ITERS = 100;
+	int NUM_ITERS = 100; // TODO: this should be a parameter
+
+	// please note that, we do not need to exclude few initial
+	// iterates, as the selected point should be on the attractor (or close)
+	// since we are (by default) doing iterates for epsi=0
+	// then the tail will be automatically right, after first iterate
+	// as it is just a solution to ODE (back in time from the point on the section)
 	for (int i = 0; i < NUM_ITERS; ++i){
-		P(solution, Px, tp);
+		P(solution_out, Px, tp);
 		DVector pv = Px;
 		pv[0] = 0.0;
 		attractor.push_back(pv);
 	}
-	splotMany(system, attractor, "forward-history", "./plots/");
+	// the solution_out will contain the whole trajectory of the point after 100 iterates of the poincare map!
 
-	std::string plotpath = "plots/";
-	std::string filename = "forward-history";
-	capd::ddeshelper::plot_value(plotpath + filename, solution.pastTime(), solution.currentTime(), system.h.leftBound() / 10, solution, false);
-	std::ostringstream plot;
-	plot << "'" << filename << "ddes-plot.dat' u 3:5:7 with lines notitle";
-	capd::ddeshelper::splot_many(plotpath, { plot.str() }, false, "trajectory");
-	std::ostringstream cmd; cmd << "cd '" << plotpath << "' && gnuplot 'trajectory.gp'";
-	capd::ddeshelper::runSystemCommand(cmd.str());
+	// now we start to generate good coordinate frame
+	DVector zerov(system.M()); // make a zero vector, as I use that frequently to initialize data
 
-	DVector zerov(system.M());
+	// this is a simple function to compute average
 	auto mean = [zerov](std::vector<DVector> items){
-		auto vv = std::accumulate(items.begin(), items.end(), zerov);
-		vv /= double(items.size());
-		return vv;
+		return items.size() ?
+			std::accumulate(items.begin(), items.end(), zerov) / double(items.size())
+			: zerov;
 	};
 
+	// get the representation of the head set from the finite
+	// dimensional set on the section. NoteL it it 2D vector!
 	DMatrix fin_C = hset.get_B();
 	DVector fin_mid_main = expand(hset.get_x());
 
-	DVector fin_ydir = expand((DVector)fin_C.column(0)); // fin_C is 2 dim...
+	// expand them with the x direction.
+	DVector fin_ydir = expand((DVector)fin_C.column(0));
 	DVector fin_zdir = expand((DVector)fin_C.column(1));
-	cout << fin_ydir << endl;
-	cout << fin_zdir << endl;
+	SHA_DEBUG(fin_ydir << endl << fin_zdir << endl);
 
-
-	std::sort(attractor.begin(), attractor.end(), [](DVector const& a, DVector const& b){
-		return a[1] < b[1];
-	});
+	// sort data with respect to y-coordinate
+	std::sort(
+		attractor.begin(), attractor.end(),
+		[](DVector const& a, DVector const& b){
+			return a[1] < b[1];
+		}
+	);
 
 	// this seems like bad idea to compute average direction
-	// istead, i just connect two farthest points and this seems ok-ish
-	cout << "Computing ydir" << endl;
+	// instead, i just connect two farthest points and this seems ok-ish
+	SHA_DEBUG("Computing ydir" << endl);
 	DVector ydir = attractor.front() - attractor.back();
-	double norm = ydir[1]; ydir /= norm;
-	ydir = -ydir; // żeby bylo jak u ani
+	double norm = abs(ydir[1]); ydir /= norm;
 
-	// mean vector seems ok-ish
-	cout << "Computing mid point" << endl;
+	// we compute mid points among all the pairs
+	// from the beginning and the end of the sorted attractor
+	// that way, we should have a point that is close to the
+	// original hset reference point.
+	SHA_DEBUG("Computing mid point" << endl);
 	std::vector<DVector> mid_candidates;
 	for (int i = 0; i < attractor.size() / 3; ++i)
 		for (int j = attractor.size() -1; j >= 2 * attractor.size() / 3; --j)
 			mid_candidates.push_back(mean({attractor[i], attractor[j]}));
 
+	// now, we try to find the point, among selected
+	// that is as close as possible to the original reference
+	// point of the set
 	capd::vectalg::SumNorm<DVector, DMatrix> selnorm;
 	std::sort(mid_candidates.begin(), mid_candidates.end(), [&fin_mid_main, &selnorm](DVector const& a, DVector const& b){
 		DVector aa{a[1], a[2]};
@@ -197,88 +297,61 @@ void computeCoordsForward(
 	});
 	DVector mid_point = mid_candidates[0];
 
-	auto translate = [&](DVector const& fin_v, DVector const& full_v){
-		DSolution const_fin_v(grid, -grid(p), grid(0), order, fin_v);
-		DSolution const_proj_v(grid, -grid(p), grid(0), order, {full_v[0], full_v[1], full_v[2]});
-		return full_v - DVector(const_proj_v) + DVector(const_fin_v);
-	};
-
+	// output some debug information, when needed
 	auto compheads = [&](DVector const& fin_v, DVector const& full_v){
 		DVector proj_v {full_v[0], full_v[1], full_v[2]};
-		cout << "old: " << fin_v << endl;
-		cout << "new: " << proj_v << endl;
-		cout << "dif: " << proj_v - fin_v << endl;
+		SHA_DEBUG("old: " << fin_v << endl);
+		SHA_DEBUG("new: " << proj_v << endl);
+		SHA_DEBUG("dif: " << proj_v - fin_v);
 	};
+	SHA_DEBUG("midpoint:" << endl); compheads(fin_mid_main, mid_point); SHA_DEBUG(endl);
+	SHA_DEBUG("ydir:    " << endl); compheads(fin_ydir, ydir); SHA_DEBUG(endl);
 
-	cout << "midpoint:" << endl; compheads(fin_mid_main, mid_point);
-	cout << "ydir:    " << endl; compheads(fin_ydir, ydir);
-
-	// I DO a small correction to the coordinates (they are very close the new ones and the old ones)
-
-	// this seems like bad idea:
-	// (it moves past points away from their position too much)
-//	ydir = translate(fin_ydir, ydir);
-//	mid_point = translate(fin_mid_main, mid_point);
-
-	cout << "translated midpoint:" << endl; compheads(fin_mid_main, mid_point);
-	cout << "translated ydir:    " << endl; compheads(fin_ydir, ydir);
-
+	// we select simple z direction, to be the same as in the original, 3-dimensional set
 	DVector zdir(system.M());
-	// zdir[0] = fin_zdir[0]; // this should be 0
 	zdir[1] = fin_zdir[1];
 	zdir[2] = fin_zdir[2];
 
-	// const solutions is not great, as it does not scale in the range over z
-	// and it does not contain the derivatives
-//	// TODO: rethink if keep using this
-//	DSolution const_fin_zdir(grid, -grid(p), grid(0), order, fin_zdir);
-//	zdir = DVector(const_fin_zdir);
+	// change the values on head, so they match the original hset
+	ydir[1] = fin_ydir[1];
+	ydir[2] = fin_ydir[2];
+	mid_point[1] = fin_mid_main[1];
+	mid_point[2] = fin_mid_main[2];
+	// TODO: test those changes!
 
-	// an idea: put zdir * e^lambda * -t, for tin range[-tau, 0] as
-	// the vector. The lambda should be choosen to scale well with the attractor thickness
-
-	// we need to do better...
-//	double LAMBDA = 3; // ?? TODO: choose
-//	auto h = system.h.leftBound();
-//	for (int i = 0; i < p; ++i){
-//		double elambdat = exp(LAMBDA * i * h);
-//		cout << elambdat << endl;
-//		for (int k = 0; k <= order; ++k){
-//			if (i == 0 && k > 0) continue;
-//			int bi = (i == 0 ? 0 : d * (1 + (i-1) * (order+1) + k)); // baseindex
-//			DVector v = fin_zdir * elambdat;
-//			for (int j = 0; j < d; ++j)
-//				zdir[bi + j] = v[j];
-//			elambdat *= -LAMBDA / (k+1); // (e^LAMBDA*-t)^(k) / k! (dla k+1)
-//		}
-//	}
-	// just leave it 2 dim and check if the deviation is big or not....
-
-	cout << "Saving coordinates" << endl;
 	// save coordinates to be used later
-	IVector I_x0(mid_point);
-	IMatrix I_C(system.M(), system.M());
-	I_C.setToIdentity();
-	I_C.column(1) = IVector(ydir);
-	I_C.column(2) = IVector(zdir);
-	IVector I_r0(system.M()); I_r0 *= 0.;
+	x0_out = IVector(mid_point);
+	C_out = IMatrix(system.M(), system.M());
+	C_out.setToIdentity();
+	C_out.column(1) = IVector(ydir);
+	C_out.column(2) = IVector(zdir);
+	r0_out = IVector(system.M()); r0_out *= 0.;
+	// TODO: estimate r) based on the attractor?
+}
 
-	std::ofstream human_readable_coords("human_readable_coords.txt");
-	human_readable_coords << "x0: " << endl;
-	human_readable_coords << mid_point << endl;
-	human_readable_coords << "C: " << endl;
-	human_readable_coords << capd::vectalg::midObject<DMatrix>(I_C) << endl;
-	human_readable_coords << "r0: " << endl;
-	human_readable_coords << I_r0 << endl;
+void save_box(std::string const& filepath, IVector const& ibox){
+	ostringstream prefix;
+	ofstream dat(filepath);
+	dat.precision(16);
+	dat << capd::ddeshelper::to_dat(ibox[0]) << " ";
+	dat << capd::ddeshelper::to_dat(ibox[1]) << " ";
+	dat << capd::ddeshelper::to_dat(interval(-1, 1)) << " ";
+	dat << capd::ddeshelper::to_dat(interval(-1, 1)) << " ";
+	dat.close();
+}
 
-	capd::ddeshelper::saveBinary("grid3_x0.ivector.bin", I_x0);
-	capd::ddeshelper::saveBinary("grid3_C.imatrix.bin", I_C);
-	capd::ddeshelper::saveBinary("grid3_r0.ivector.bin", I_r0);
-	std::cout << "Please run from 'bin' folder: " << endl;
-	std::cout << "../../../../bin/convmatrix ";
-	std::cout << system.M() << " bin grid3_C.imatrix.bin ";
-	std::cout << "inv bin " << "grid3_invC.imatrix.bin" << endl;
+void nonrig_box_plot(
+		std::string plotdir,
+		std::vector<DVector> const& attractor,
+		system3d& system, HSet2D& hset, int CUTS_Y, int CUTS_Z,
+		DVector const& ref, DVector const& ydir, DVector const& zdir){
 
+	// TODO: USE THIS FUNCTION!
+	// TODO: pass right ydir and zdir
+
+	auto& order = system.order;
+	auto& d = system.d;
+	auto& p = system.p;
 	GridSet gridSet(2);
 	hset.gridSet(gridSet, CUTS_Y, CUTS_Z);
 	IVector box = expand(gridSet.box());
@@ -288,13 +361,10 @@ void computeCoordsForward(
 	{
 		DVector mid_chunk = capd::vectalg::midObject<DVector>(*chunk);
 		DVector diff = gridInvCoords*(mid_chunk - hset.get_x());
-		//DVector diff = 0.5 * gridInvCoords*(mid_chunk - hset.get_x()); // TODO: why i need 0.5 to get the right picture??? - rethink!
-		//cout << diff << endl;
-		DVector v = mid_point + diff[0] * ydir + diff[1] * zdir;
-		//DVector v = mid_point + diff[0] * ydir;
+		DVector v = ref + diff[0] * ydir + diff[1] * zdir;
 		the_set_chunks.push_back(v);
 	}
-	splotMany(system, the_set_chunks, "the_set_chunks_forward");
+	splotMany(system, the_set_chunks, "the_set_chunks_forward", plotdir);
 
 	// for each time point draw (a 3d?) picture of all the points on the
 	// generated set and all the points of the attractor
@@ -317,7 +387,7 @@ void computeCoordsForward(
 			datpoints.close();
 		};
 
-		std::string plotpath = "plots/scatter/";
+		std::string plotpath = plotdir + "scatter/";
 		capd::ddeshelper::mkdir_p(plotpath);
 		for (int k = 0; k <= order; ++k){
 			for (int i = 0; i < p; ++i){
@@ -359,4 +429,3 @@ void computeCoordsForward(
 
 	}
 }
-
