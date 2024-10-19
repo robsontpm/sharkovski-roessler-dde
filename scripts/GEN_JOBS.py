@@ -34,10 +34,10 @@ COVERING_SETUP=[
 JOBS = [
     {
         "filepath": "./PREP_JOBLIST.sh",
-        "script": SCRIPT_DIR + "Roessler_DDE_prepare_piece",
+        "script": SCRIPT_DIR + "Roessler_DDE_prepare_tail",
         "wd": TMP_DIR,
-        "outdir": DATA_DIR,
-        "subjobs": COVERING_SETUP,
+        "subjobs": COVERING_SETUP[0:1],   # in generating common r0 we only take G
+        "command": "{script} 'wd={wd}' 'cuty={cut_y}' 'cutz={cut_z}' 'iy={iy}' 'iz={iz}'\n",
     },
     {
         "filepath": "./PROOF_JOBLIST.sh",
@@ -45,10 +45,9 @@ JOBS = [
         "wd": DATA_DIR,
         "outdir": PROOF_DIR,        
         "subjobs": COVERING_SETUP,
+        "command": "{script} 'wd={wd}' 'out={outdir}{out}' 'src={src}' 'dst={dst}' 'cuty={cut_y}' 'cutz={cut_z}' 'iy={iy}' 'iz={iz}'\n",
     },
 ]
-# please do not modify this
-COMMAND="{script} 'wd={wd}' 'out={outdir}{out}' 'src={src}' 'dst={dst}' 'cuty={cut_y}' 'cutz={cut_z}' 'iy={iy}' 'iz={iz}'\n"
 
 for setup in JOBS:    
     # update local variables filepath, script, subjobs
@@ -61,5 +60,5 @@ for setup in JOBS:
         for iy in range(sjob["cut_y"]):
             for iz in range(sjob["cut_z"]):
                 sjob.update({ "iy": iy, "iz": iz, })
-                outf.write(COMMAND.format(**sjob))
+                outf.write(command.format(**sjob))
     outf.close()

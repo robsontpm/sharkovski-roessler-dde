@@ -27,7 +27,7 @@ void computeCoordsForward(
 		system3d& system, DVector const& ivp,
 		HSet2D& hset, int CUTS_Y, int CUTS_Z,
 		std::vector<DVector>& attractor_out, DSolution& solution_out,
-		IVector& x0_out, IMatrix& C_out, IVector& r0_out);
+		IVector& x0_out, IMatrix& C_out, IVector& r0_out, IVector& Xi_out);
 
 /**
  * This saves a representation of a box in good coordinates to a dat file
@@ -102,6 +102,7 @@ int main(int argc, char* argv[])
 		IVector I_x0(roessler525.M());
 		IMatrix I_C(roessler525.M(), roessler525.M());
 		IVector I_r0(roessler525.M());
+		IVector I_Xi(roessler525.d * roessler525.p);
 		// here we will hold the attractor segments on the section, for visualization
 		std::vector<DVector> attractor;
 		// this will hold the whole solution for generating the attractor
@@ -117,7 +118,7 @@ int main(int argc, char* argv[])
 			roessler525,
 			IVP, grid3, CUTS_Y, CUTS_Z,
 			attractor, solution,
-			I_x0, I_C, I_r0
+			I_x0, I_C, I_r0, I_Xi
 		);
 		// do some fancy plots
 		splotMany(roessler525, attractor, "forward-history", plotdir);
@@ -136,21 +137,22 @@ int main(int argc, char* argv[])
 		auto zdir = I_C.column(2);
 		// make a nonrig plot of the set
 		nonrig_box_plot(
-				plotdir, attractor, roessler525,
-				grid3, CUTS_Y, CUTS_Z,
-				capd::vectalg::midObject<DVector>(I_x0),
-				capd::vectalg::midObject<DVector>(ydir),
-				capd::vectalg::midObject<DVector>(zdir));
+			plotdir, attractor, roessler525,
+			grid3, CUTS_Y, CUTS_Z,
+			capd::vectalg::midObject<DVector>(I_x0),
+			capd::vectalg::midObject<DVector>(ydir),
+			capd::vectalg::midObject<DVector>(zdir)
+		);
 
 		cout << "GENERATING C_i sets... " << std::endl;
-		// TODO: rethink!
-		// TODO: now that I have changed the head to match the old hset grid3,
-		// TODO: we should just now hmmm... what to do?
-		// Attractor's container (TODO: rethink!) This should be just grid3 ??
-		//HSet2D gridAI (IVector ({I_x0[1], I_x0[2]}), IMatrix ({{I_C[1][1], I_C[1][2]}, {I_C[2][1], I_C[2][2]}}), DVector({3.63687,0.0004}));
-		//auto& refgrid = gridAI;
-		//auto& refgrid = grid3;
-		HSet2D refgrid(grid3.get_I_x(), grid3.get_I_B(), grid3.get_r());
+		// Now the problem is that, the mid points of hsets c3_i in \R^2 are given in the absolute coordinates
+		// not w.r.t. to their hset B matrix. Therefore, we need to express them in the new coordinates
+		// coming from the head of matrix I_C, then we translate them to the new position, but using the
+		// full matrix C to have coordinates in the space C^n_p. Those coordinates will be such that
+		// the head \pi_{y,z}(z(hsetwithtail_i)) = hset_i
+		// NOTE: we set radius to be DVector({0,0}), as we do not use it here
+		//       this is just to get the coordinate change.
+		HSet2D refgrid (IVector ({I_x0[1], I_x0[2]}), IMatrix ({{I_C[1][1], I_C[1][2]}, {I_C[2][1], I_C[2][2]}}), DVector({0,0}));
 
 		// transform the reference points of other sets (C_i's) to the good coordinate frame
 		SHA_DEBUG("refgrid.B = " << refgrid.get_I_B() << endl << "B^{-1} = " << refgrid.get_I_invB() << endl);
@@ -184,8 +186,9 @@ int main(int argc, char* argv[])
 		capd::ddeshelper::saveBinary(WD + "G_x0.ivector.bin", I_x0);
 		capd::ddeshelper::saveBinary(WD + "G_M.imatrix.bin", I_C);
 		capd::ddeshelper::saveBinary(WD + "G_r0.ivector.bin", I_r0);
+		capd::ddeshelper::saveBinary(WD + "G_Xi.ivector.bin", I_Xi);
 		// save human-readable representations (it might get machine precision loss)
-		std::ofstream human_readable_coords("human_readable_coords.txt");
+		std::ofstream human_readable_coords(WD + "human_readable_coords.txt");
 		human_readable_coords.precision(16);
 		human_readable_coords << "G_x0: " << endl;
 		human_readable_coords << capd::vectalg::midObject<DVector>(I_x0) << endl;
@@ -196,7 +199,9 @@ int main(int argc, char* argv[])
 		human_readable_coords << "M: " << endl;
 		human_readable_coords << capd::vectalg::midObject<DMatrix>(I_C) << endl;
 		human_readable_coords << "r0: " << endl;
-		human_readable_coords << capd::vectalg::midObject<DVector>(I_r0) << endl;
+		human_readable_coords << I_r0 << endl;
+		human_readable_coords << "Xi: " << endl;
+		human_readable_coords << I_Xi << endl;
 		std::cout << "DONE. Data saved in '" << WD << "'" << endl;
 		std::cout << "Please run from '" << WD << "' folder the following: " << endl;
 		std::cout << endl;
@@ -219,7 +224,7 @@ void computeCoordsForward(
 		system3d& system, DVector const& ivp,
 		HSet2D& hset, int CUTS_Y, int CUTS_Z,
 		std::vector<DVector>& attractor_out, DSolution& solution_out,
-		IVector& x0_out, IMatrix& C_out, IVector& r0_out){
+		IVector& x0_out, IMatrix& C_out, IVector& r0_out, IVector& Xi_out){
 
 	// renaming for convenience
 	int& p = system.p;
@@ -343,7 +348,8 @@ void computeCoordsForward(
 	C_out.column(1) = IVector(ydir);
 	C_out.column(2) = IVector(zdir);
 	r0_out = IVector(system.M()); r0_out *= 0.;
-	// TODO: estimate r) based on the attractor?
+	Xi_out = IVector(system.p * system.d); Xi_out *= 0.;
+	// TODO: estimate r and Xi based on the attractor?
 }
 
 void save_box(std::string const& filepath, IVector const& ibox){

@@ -165,10 +165,13 @@ struct system3d
 			P.setMaxSteps(1000);
 		}
 
-	// TODO: check if this is deprecated and remove if so
-	bool refine_box(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
-	// TODO: check if this is deprecated and remove if so
-	bool inside(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH=1, int howManyPiecesV=1, int iteration = 1);
+	/**
+	 * checks if the image of one sets is inside the second set.
+	 * \pi_{y,z} z(X_i) \subset hset1 \subset \R^2,
+	 * CloseTail(X_i) \subset (Id - z(.))  (mid_i + C*r0)
+	 * FarTail(X_i) \subset Xi_0
+	 * (so that Close and Far tails are the same, only the heads given by hset1 changes)
+	 */
 	bool inside_piece(
 		const HSet2D &hset1, IVector const& mid1,
 		const HSet2D &hset2, IVector const& mid2,
@@ -177,7 +180,8 @@ struct system3d
 		int howManyPiecesH, int howManyPiecesV, int pieceH, int pieceV,
 		IVector &outPimage, IVector &outPXi
 	);
-	bool estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iy, int iz);
+	// TODO: remove - deprecated
+	// bool estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iy, int iz);
 
 	// returns the M - size of the finite representation of the segments.
 	int M() const { return (1 + (1+order) * p) * d; }

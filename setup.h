@@ -14,9 +14,9 @@
 #include "utils.h"
 
 struct Config {
-	interval a = 5.25; 									// this is representable number, so we can left it that way
-	interval epsi = interval(1.) / interval(10000.); 	// [0.0001], as this is not representable
-	interval tau = 0.5;									// this is representable number, so we can left it that way
+	interval a = 5.25; 		// this is representable number, so we can left it that way
+	interval epsi; 			// this is set in the constructor.
+	interval tau = 0.5;		// this is representable number, so we can left it that way
 	system3d roessler525;
 	HSet2D grid3;
 	vector<HSet2D> c3;
@@ -34,8 +34,8 @@ struct Config {
 		c3[2] = HSet2D(IVector ({-9.74889, 0.0307529}) , IMatrix ({{-1., 0.000656767}, {-0.000656767, -1.}}) , DVector({0.036,0.00072}));			// cube 3
 	}
 
-	Config(): Config(epsi) {}
-} config;
+	//Config(): Config() {} // [0.0001], as this is not representable
+} config(interval(1.) / interval(10000.));
 
 
 #endif // _SHA_ROS_DDE_SETUP_

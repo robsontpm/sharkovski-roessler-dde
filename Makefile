@@ -7,8 +7,7 @@ OBJDIR = ./.obj/
 
 # a list of all the programs to compile (from this directory), separated by single space.
 # i.e. .cpp files that contain main() function.
-EXECUTABLES = Roessler_DDE_gencoords Roessler_DDE_prepare_R Roessler_DDE_prepare_piece Roessler_DDE_proof_piece
-#EXECUTABLES = Roessler_DDE_gencoords
+EXECUTABLES = Roessler_DDE_gencoords Roessler_DDE_prepare_tail Roessler_DDE_proof_piece
 
 # a list of all your units to be linked with your programs (other .cpp files), separated by single space
 # i.e. all other .cpp files that does not have main() inside.
