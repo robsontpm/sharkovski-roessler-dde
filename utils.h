@@ -180,8 +180,6 @@ struct system3d
 		int howManyPiecesH, int howManyPiecesV, int pieceH, int pieceV,
 		IVector &outPimage, IVector &outPXi
 	);
-	// TODO: remove - deprecated
-	// bool estimate_piece(const HSet2D &hset1, const HSet2D &hset2, int howManyPiecesH, int howManyPiecesV, int iy, int iz);
 
 	// returns the M - size of the finite representation of the segments.
 	int M() const { return (1 + (1+order) * p) * d; }
@@ -189,7 +187,7 @@ struct system3d
 	// makes a rig segment, not a very DRY code, but the capdDDEs library forces that...
 	DSolution makeDSegment(DVector vector){ DSolution sol(dgrid, -dgrid(p), -dgrid(0), order, {0.,0.,0.}); sol.set_x(vector); return sol; }
 	// makes a rig segment, not a very DRY code, but the capdDDEs library forces that...
-	DDESolution makeISegment(IVector vector){ DDESolution sol(grid, -grid(p), -grid(0), order, {0.,0.,0.}); sol.set_x(vector); return sol; } // TODO: check if this works...
+	DDESolution makeISegment(IVector vector){ DDESolution sol(grid, -grid(p), -grid(0), order, {0.,0.,0.}); sol.set_x(vector); return sol; }
 };
 
 // This will be used to turn on/off the debug in programs.

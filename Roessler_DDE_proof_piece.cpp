@@ -21,7 +21,9 @@ int main(int argc, char* argv[])
 	// this is a helper class to parse arguments from command line
 	// we will prepare a lot of commands and run them in parallel to get the
 	// speed boost. Each computation will check the conditions of the small
-	// chunk of the original set.
+	// chunk of the original set. The arguments from comand line are nice for
+	// controlling that.
+	// you can run program with -h or --help to see the help.
 	capd::ddeshelper::ArgumentParser parser(argc, argv);
 	int iy = 0, iz = 0;
 	int CUT_Y = 1, CUT_Z = 1;
@@ -100,10 +102,6 @@ int main(int argc, char* argv[])
 		// the r0 and Xi (tail) part would be the same for all sets
 		// except maybe at the head z(x_0). We will set the head from the
 		// selected finite dimensional sets for ODE
-		// TODO: think if we should add a way to read from .txt files
-		// TODO: (it again would be rigorous and architecture independent)
-		// TODO: (but then we are dealing with digit representation problem)
-		// TODO: 2) - make the config for the filenames!
 		IVector rel_r0(roessler525.M());
 		IVector rel_Xi(roessler525.d * roessler525.p);
 		capd::ddeshelper::readBinary(WD + "G_r0.ivector.bin", rel_r0);
@@ -189,6 +187,6 @@ int main(int argc, char* argv[])
 		cout << iy << " " << iz << ": Exception caught: "<< e.what() << endl;
 		cout << str_src << "=>" << str_dst << " " << iy << "/" << CUT_Y << " " << iz << "/" << CUT_Z << ": " << false << endl;
   	}
-  return 0;
+    return 0;
 } // main()
 

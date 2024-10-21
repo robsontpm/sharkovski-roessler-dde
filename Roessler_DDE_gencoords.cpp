@@ -11,16 +11,20 @@
  * it is not feasible to provide initial data by hand. This is why we need
  * an automatic procedure.
  *
- * The default values of parameters to this program, ale set to match
+ * The default values of parameters to this program, are set to match
  * the method used in the accompanying paper. The reader can experiment with
  * other settings, if they wishes.
+ *
+ * It is a little bit complicated, but it is non-rigorous. It produces
+ * the approximate coordinate frame for the set: M. Later, the inverse of
+ * M is computed rigorously and used in the proof.
  * ========================================================================*/ 
 
 #include "setup.h"
 
 /**
  * the function to generate good enough coordinates empirically for a given initial data
- * (point on ection in the ODE. The coordiates are for the segment in the DDE system.
+ * (point on the section in the ODE. The coordiates are for the segment in the DDE system.
  */
 void computeCoordsForward(
 		bool verbose,
@@ -30,14 +34,14 @@ void computeCoordsForward(
 		IVector& x0_out, IMatrix& C_out, IVector& r0_out, IVector& Xi_out);
 
 /**
- * This saves a representation of a box in good coordinates to a dat file
- * (nonrigorous). This is just to use them in ploting pretty figures
+ * This saves a representation of a box in good coordinates to a .dat file
+ * (nonrigorous). This is just to use them in plotting pretty figures
  * later.
  */
 void save_box(std::string const& filepath, IVector const& ibox);
 
 /**
- * This doeas kind of nonrigorous visualization
+ * This does kind of nonrigorous visualization
  * of the set given in the good coords.
  */
 void nonrig_box_plot(
@@ -240,14 +244,14 @@ void computeCoordsForward(
 	DSolver solver(vf, order * 3);
 	DPoincare P(solver, section, poincare::MinusPlus);
 
-	// make data needed to propagate the initial fanction, which is constant.
+	// make data needed to propagate the initial function, which is constant.
 	DSolution constIVP(grid, -grid(p), grid(0), order, ivp);
 	DSolution Px(grid, -grid(p), grid(0), order, ivp);
 	solution_out = constIVP;
 
 	// generate a lot of points (segments) on the section
 	double tp;
-	int NUM_ITERS = 100; // TODO: this should be a parameter
+	int NUM_ITERS = 100;
 
 	// please note that, we do not need to exclude few initial
 	// iterates, as the selected point should be on the attractor (or close)
@@ -339,7 +343,6 @@ void computeCoordsForward(
 	ydir[2] = fin_ydir[2];
 	mid_point[1] = fin_mid_main[1];
 	mid_point[2] = fin_mid_main[2];
-	// TODO: test those changes!
 
 	// save coordinates to be used later
 	x0_out = IVector(mid_point);
@@ -349,7 +352,7 @@ void computeCoordsForward(
 	C_out.column(2) = IVector(zdir);
 	r0_out = IVector(system.M()); r0_out *= 0.;
 	Xi_out = IVector(system.p * system.d); Xi_out *= 0.;
-	// TODO: estimate r and Xi based on the attractor?
+	// TODO: it can be improved: estimate r and Xi based on the attractor?
 }
 
 void save_box(std::string const& filepath, IVector const& ibox){
